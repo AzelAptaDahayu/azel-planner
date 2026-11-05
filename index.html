@@ -91,7 +91,7 @@ textarea{min-height:90px;resize:vertical}
 .clock{font-family:var(--f-display);font-size:2.3rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
 .date{color:var(--muted);font-size:.92rem;font-weight:700}
 
-.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px;margin-left:auto}
 .syncbtn{border:0;background:rgba(255,255,255,.75);border-radius:99px;padding:6px 11px;font-weight:800;font-size:.78rem;display:flex;gap:6px;align-items:center;color:var(--ink)}
 .syncbtn svg{width:16px;height:16px}
 .syncbtn.off{color:var(--bad)} .syncbtn.on{color:var(--good)}
@@ -314,9 +314,57 @@ details.card > summary{cursor:pointer;font-weight:800}
 .sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom, 0px));background:var(--ink);color:#fff;padding:10px 16px;border-radius:14px;font-weight:800;z-index:30;width:max-content;max-width:calc(100% - 32px);font-size:.92rem;text-align:center}
 
+/* IELTS */
+.ielts-hero{border-radius:22px;padding:18px;background:linear-gradient(135deg,var(--blue-soft),var(--pink-soft) 60%,var(--yellow-soft));border:1px solid var(--line);display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow)}
+.bandrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}
+@media (max-width:430px){.bandrow{grid-template-columns:1fr}}
+.bandbig{display:flex;flex-direction:column;gap:2px}
+.bandbig b{font-family:var(--f-display);font-size:2.7rem;font-weight:600;line-height:1.05}
+.skillchips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.skchip{background:rgba(255,255,255,.8);border-radius:14px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;border-top:4px solid var(--sc);font-size:.7rem;font-weight:800;color:var(--muted);min-width:0}
+.skchip b{font-family:var(--f-display);font-size:1.25rem;color:var(--ink);font-weight:600}
+.practice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ptile{border:0;text-align:left;border-radius:18px;padding:14px;background:var(--surface);border-left:7px solid var(--sc);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px;min-height:92px;color:var(--ink);width:100%}
+.ptile b{font-family:var(--f-display);font-size:1.05rem;font-weight:600}
+.ptile span{font-size:.82rem;color:var(--muted)}
+.mic{width:108px;height:108px;border-radius:50%;border:0;background:var(--pink);display:grid;place-items:center;margin:6px auto 0;box-shadow:0 8px 24px rgba(226,132,165,.35)}
+.mic svg{width:44px;height:44px}
+.mic.rec{background:#F28AA6;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.qbig{font-family:var(--f-display);font-size:1.3rem;font-weight:500;line-height:1.4;text-align:center}
+.cue{background:var(--yellow-soft);border:2px dashed var(--t-fun);border-radius:18px;padding:16px}
+.crit{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:430px){.crit{grid-template-columns:1fr}}
+.critc{background:var(--soft);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.critc .cb{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:800}
+.critc .cb b{font-family:var(--f-display);font-size:1.35rem;font-weight:600}
+.fix{border-radius:14px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);display:flex;flex-direction:column;gap:4px;font-size:.93rem;overflow-wrap:anywhere}
+.fix .o,.o-text{color:var(--bad);text-decoration:line-through;text-decoration-color:rgba(194,69,106,.45)}
+.fix .b{color:var(--good);font-weight:700}
+.passage p{margin:0 0 10px;line-height:1.65}
+.passage b.pl{color:var(--pink-ink);margin-right:8px}
+.qitem{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.qitem.ok{border-color:#9ED6B5;background:#F3FBF6}
+.qitem.bad{border-color:#F3C2D0;background:#FFF5F8}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{border:1.5px solid var(--line);background:var(--bg);border-radius:12px;padding:8px 12px;font-weight:700;font-size:.88rem;text-align:left;color:var(--ink)}
+.opt[aria-pressed="true"]{background:var(--pink);border-color:var(--pink)}
+.timerpill{font-variant-numeric:tabular-nums;font-weight:800;background:var(--soft);border-radius:99px;padding:6px 12px;display:inline-block}
+.timerpill.over{background:#FFE3EA;color:var(--bad)}
+.ai-wait{align-items:center;text-align:center;padding:30px 16px}
+.spinner{width:42px;height:42px;border-radius:50%;border:5px solid var(--pink-soft);border-top-color:var(--t-study);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wr-text{min-height:46vh;font-size:1rem;line-height:1.6}
+.chartbox{overflow-x:auto}
+.chartbox svg{display:block;width:100%;max-width:460px;height:auto}
+table.mini{border-collapse:collapse;font-size:.85rem;width:100%}
+table.mini th,table.mini td{border:1px solid var(--line);padding:6px 8px;text-align:left}
+.rec-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;text-align:left;color:var(--ink)}
+.rec-row .bd{font-family:var(--f-display);font-size:1.4rem;font-weight:600}
+@media (prefers-reduced-motion: reduce){.mic.rec,.spinner{animation:none}}
 /* Bottom tabs */
-nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(6,1fr);padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom, 0px));padding-left:max(8px, env(safe-area-inset-left, 0px));padding-right:max(8px, env(safe-area-inset-right, 0px));z-index:5;box-shadow:0 -4px 18px rgba(226,132,165,.12)}
-nav.tabs button{border:0;background:transparent;color:var(--muted);padding:6px 0;border-radius:14px;font-weight:800;font-size:.7rem;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;min-width:0}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(7,1fr);padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom, 0px));padding-left:max(8px, env(safe-area-inset-left, 0px));padding-right:max(8px, env(safe-area-inset-right, 0px));z-index:5;box-shadow:0 -4px 18px rgba(226,132,165,.12)}
+nav.tabs button{border:0;background:transparent;color:var(--muted);padding:6px 0;border-radius:14px;font-weight:800;font-size:.66rem;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;min-width:0}
 nav.tabs button svg{width:22px;height:22px}
 nav.tabs button[aria-selected="true"]{color:var(--pink-ink);background:var(--pink-soft)}
 .dot{position:absolute;top:4px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:var(--pink-ink)}
@@ -396,6 +444,36 @@ nav.tabs button[aria-selected="true"]{color:var(--pink-ink);background:var(--pin
     <div class="cal-grid" id="calGrid"></div>
     <div class="legend"><span style="--tc:var(--t-study)"><i style="border-radius:50%"></i>To-do deadline</span><span style="--tc:var(--t-class)"><i style="border-radius:50%"></i>Event</span><span style="--tc:var(--t-fun)"><i style="border-radius:50%"></i>Schedule change</span></div>
     <div class="card" id="calDay"></div>
+  </section>
+
+  <!-- IELTS -->
+  <section id="view-ielts" class="section" style="gap:18px" hidden>
+    <div class="ielts-hero" id="ieHero"></div>
+    <div class="notice" id="ieKeyNote" hidden><b>Set up your AI tutor first.</b> It's free and takes about 5 minutes. <button class="linkbtn" type="button" data-ia="aikey">Set it up</button></div>
+    <div class="section">
+      <h2>Practise with your AI tutor</h2>
+      <div class="segs" role="group" aria-label="Tutor style"><button type="button" data-ia="style" data-v="strict" aria-pressed="true">Strict Examiner</button><button type="button" data-ia="style" data-v="friendly" aria-pressed="false">Friendly Coach</button></div>
+      <div class="practice-grid">
+        <button class="ptile" type="button" data-ia="go-speaking" style="--sc:#EE9AB5"><b>Speaking</b><span>Full mock test or one question. Talk out loud.</span></button>
+        <button class="ptile" type="button" data-ia="go-writing" style="--sc:#F0CC5C"><b>Writing</b><span>Task 1 chart or Task 2 essay, then get marked.</span></button>
+        <button class="ptile" type="button" data-ia="go-reading" style="--sc:#8FCFAE"><b>Reading</b><span>New passage, 10 questions, 20 minutes.</span></button>
+        <button class="ptile" type="button" data-ia="go-listening" style="--sc:#8DBBE5"><b>Listening</b><span>A recording and 10 questions. Plays once.</span></button>
+      </div>
+      <div><button class="btn small ghost" type="button" data-ia="log">Log a score from a book or mock test</button></div>
+    </div>
+    <div class="section"><h2>Progress</h2><div class="card" id="ieChart"></div></div>
+    <div class="section"><h2>Recent practice</h2><div class="section" style="gap:8px" id="ieRecent"></div></div>
+    <details class="card">
+      <summary>Band calculator</summary>
+      <div class="grid2">
+        <div class="field"><label class="label" for="cL">Listening (correct / 40)</label><input class="in" id="cL" type="number" min="0" max="40" inputmode="numeric"><span class="small muted" id="cLb"></span></div>
+        <div class="field"><label class="label" for="cR">Reading (correct / 40)</label><input class="in" id="cR" type="number" min="0" max="40" inputmode="numeric"><span class="small muted" id="cRb"></span></div>
+        <div class="field"><label class="label" for="cW">Writing band</label><select id="cW"><option value="">–</option><option value="9.0">9.0</option><option value="8.5">8.5</option><option value="8.0">8.0</option><option value="7.5">7.5</option><option value="7.0">7.0</option><option value="6.5">6.5</option><option value="6.0">6.0</option><option value="5.5">5.5</option><option value="5.0">5.0</option><option value="4.5">4.5</option><option value="4.0">4.0</option><option value="3.5">3.5</option><option value="3.0">3.0</option><option value="2.5">2.5</option><option value="2.0">2.0</option><option value="1.5">1.5</option><option value="1.0">1.0</option><option value="0.5">0.5</option><option value="0.0">0.0</option></select></div>
+        <div class="field"><label class="label" for="cS">Speaking band</label><select id="cS"><option value="">–</option><option value="9.0">9.0</option><option value="8.5">8.5</option><option value="8.0">8.0</option><option value="7.5">7.5</option><option value="7.0">7.0</option><option value="6.5">6.5</option><option value="6.0">6.0</option><option value="5.5">5.5</option><option value="5.0">5.0</option><option value="4.5">4.5</option><option value="4.0">4.0</option><option value="3.5">3.5</option><option value="3.0">3.0</option><option value="2.5">2.5</option><option value="2.0">2.0</option><option value="1.5">1.5</option><option value="1.0">1.0</option><option value="0.5">0.5</option><option value="0.0">0.0</option></select></div>
+      </div>
+      <p id="cOut"></p>
+      <p class="small muted">Academic Reading and Listening conversion. Overall = average of the 4 skills, rounded to the nearest half band (x.25 goes up to x.5, x.75 goes up to the next whole band).</p>
+    </details>
   </section>
 
   <!-- FOCUS -->
@@ -585,6 +663,8 @@ nav.tabs button[aria-selected="true"]{color:var(--pink-ink);background:var(--pin
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>Courses</button>
   <button role="tab" id="tab-cal" aria-selected="false" data-v="cal" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Calendar</button>
+  <button role="tab" id="tab-ielts" aria-selected="false" data-v="ielts" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4h0A2.5 2.5 0 0 1 4 13.5v-8Z"/><path d="m9 12.5 3-7 3 7M10.2 10h3.6"/></svg>IELTS</button>
   <button role="tab" id="tab-focus" aria-selected="false" data-v="focus" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>Focus<span class="dot" id="focusDot" hidden></span></button>
   <button role="tab" id="tab-money" aria-selected="false" data-v="money" type="button">
@@ -619,6 +699,8 @@ nav.tabs button[aria-selected="true"]{color:var(--pink-ink);background:var(--pin
     <div id="rvBody" class="section" style="flex:1;gap:16px"></div>
   </div>
 </div>
+
+<div class="review" id="ieltsRun" hidden><div class="review-in" id="ieltsRunIn"></div></div>
 
 <div class="sheet-back" id="sheetBack" hidden>
   <form class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" novalidate>
@@ -679,7 +761,8 @@ const BUILTIN = {
   pub:   {name:"Economics of Public Sector", code:"EKO61110", room:"Gedung A2.1", sks:3, color:"mint", how:GENERIC_HOW},
   urban: {name:"Urban and Regional Economics", code:"EKO61111", room:"Gedung A2.6A", sks:3, color:"peach", how:GENERIC_HOW},
   panc:  {name:"Pancasila", code:"MWU60102", room:"J3.3", sks:2, color:"blue", how:GENERIC_HOW},
-  pkn:   {name:"Pendidikan Kewarganegaraan", code:"MWU60103", room:"J3.4", sks:2, color:"pink", how:GENERIC_HOW}
+  pkn:   {name:"Pendidikan Kewarganegaraan", code:"MWU60103", room:"J3.4", sks:2, color:"pink", how:GENERIC_HOW},
+  ielts: {name:"IELTS", code:"Academic", room:"", sks:0, color:"lilac", how:"Speak or write first, then check with your AI tutor. Save every new phrase from your feedback as a flashcard and review it the next day."}
 };
 const EXTRA = {personal:{name:"Personal", color:"lilac"}, work:{name:"Kandui work", color:"peach"}, ukmp:{name:"UKMP", color:"mint"}, other:{name:"Other", color:"yellow"}};
 
@@ -769,7 +852,7 @@ const HARD = new Set(["class","asdos","work","event"]);
 const tc = t => "var(--t-"+(t||"rest")+")";
 
 /* ================= data layer ================= */
-const COLS = ["todos","events","adjust","courses","sets","links","anchors","focuslog"];
+const COLS = ["todos","events","adjust","courses","sets","links","anchors","focuslog","ielts","prefs"];
 const D = {mode:"loading", db:null, assets:null, cols:{}, loaded:{}};
 COLS.forEach(c => { D.cols[c] = []; D.loaded[c] = false; });
 function wq(fn){
@@ -1001,7 +1084,7 @@ function ideaAttrs(date, b){
 
 /* ================= tabs ================= */
 let view = "today";
-const VIEWS = ["today","todo","courses","cal","focus","money"];
+const VIEWS = ["today","todo","courses","cal","ielts","focus","money"];
 function show(v){
   view = v;
   VIEWS.forEach(x => { $("view-"+x).hidden = x!==v; $("tab-"+x).setAttribute("aria-selected", x===v ? "true" : "false"); });
@@ -1086,7 +1169,7 @@ function renderNow(){
   $("clock").textContent = pad(now.getHours())+":"+pad(now.getMinutes());
   $("dateLine").textContent = DAYS_LONG[d]+", "+now.getDate()+" "+MONTHS[now.getMonth()];
   const h = now.getHours();
-  $("greet").textContent = h<11 ? "Good morning, Azel" : h<15 ? "Good afternoon, Azel" : h<19 ? "Good evening, Azel" : "Good night soon, Azel";
+  $("greet").textContent = h<12 ? "Good morning, Azel" : h<15 ? "Good afternoon, Azel" : h<19 ? "Good evening, Azel" : "Good night soon, Azel";
   const list = blocksFor(t); const i = findBlock(list, Math.floor(minsF));
   if(i<0){ $("nowTitle").textContent = "Free time"; return; }
   const b = list[i]; const a = toMin(b.s), z = toMin(b.e);
@@ -1771,7 +1854,7 @@ function renderAll(){
   setTimeout(() => {
     renderQueued = false;
     safe(fillSelects); safe(renderNow); safe(renderChips); safe(renderTimeline); safe(renderChanges); safe(renderDue);
-    safe(renderTodo); safe(renderCourses); safe(renderCal); safe(renderAnchors); safe(renderStats); safe(renderSyncBtn);
+    safe(renderTodo); safe(renderCourses); safe(renderCal); safe(renderAnchors); safe(renderStats); safe(renderSyncBtn); safe(() => { if(window.__ieltsRender) window.__ieltsRender(); });
   }, 0);
 }
 $("courseGuide").innerHTML = ["econ","macro","micro","mon","pub","urban"].map(k => `<div><b>${BUILTIN[k].name}</b><span>${esc(BUILTIN[k].how)}</span></div>`).join("") + `<div><b>Pancasila and PKn</b><span>${esc(GENERIC_HOW)}</span></div>`;
@@ -1787,9 +1870,11 @@ setInterval(() => {
   if(today()!==lastDay){ lastDay = today(); weekOff = 0; selDate = today(); renderAll(); renderAnchors(); renderStats(); }
 }, 5000);
 document.addEventListener("visibilitychange", () => { if(!document.hidden){ renderAll(); paintTimer(); if(timer.mode==="focus") keepAwake(true); } });
+window.__plannerAPI = {$, esc, put, del, byId, D, toast, openP, closeP, ymd, today, fmtD, fmtLong, field, twoTap, show};
 if("serviceWorker" in navigator && location.protocol==="https:") window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(e => console.warn("offline mode unavailable", e)); });
 })();
 </script>
+<script src="ielts.js"></script>
 
 <script>
 (function(){
