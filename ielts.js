@@ -24,7 +24,7 @@ const parseDay = s => { const p = String(s).split("-").map(Number); return new D
 const arr = x => Array.isArray(x) ? x : [];
 const str = x => typeof x==="string" ? x : (x==null ? "" : String(x));
 
-function prefs(){ return Object.assign({target:9, testDate:"", key:"", model:"", style:"strict", voice:true}, byId("prefs","ielts") || {}); }
+function prefs(){ return Object.assign({target:9, testDate:"", key:"", model:"", style:"strict", voice:true, pauseSecs:10, voiceName:""}, byId("prefs","ielts") || {}); }
 function savePrefs(patch){ const p = Object.assign({}, byId("prefs","ielts") || {}, patch, {id:"ielts"}); delete p.updatedAt; put("prefs", p); }
 const sessions = () => D.cols.ielts.slice().sort((a,b) => (a.ts||0)-(b.ts||0));
 function latestBand(skill){
@@ -45,7 +45,7 @@ const sys = () => (STYLE[prefs().style] || STYLE.strict) + BASE;
 const ERR = {
   nokey:"Set up your AI tutor key first: IELTS → Settings.",
   badkey:"Your Gemini key didn't work. Check it in IELTS → Settings.",
-  rate:"You've reached the free limit for now. Wait a minute and try again, or come back tomorrow.",
+  rate:"Pita's free limit is used up for now. Wait a minute and try again, or come back tomorrow. You won't be charged anything.",
   network:"No internet connection. Connect and try again.",
   blocked:"The AI didn't give an answer this time. Try again.",
   parse:"The AI's answer came back broken. Try again.",
@@ -57,11 +57,14 @@ const ERR = {
 };
 const errMsg = e => ERR[e && e.code] || "Something went wrong. Try again.";
 const mkErr = code => Object.assign(new Error(code), {code});
+const COOL = {}; // models that just hit their free limit rest for a while
 async function ai(system, parts, opts){
   opts = opts || {};
   const pf = prefs();
   if(!pf.key) throw mkErr("nokey");
-  const list = [pf.model, ...MODELS].filter((m,i,a) => m && a.indexOf(m)===i);
+  const now = Date.now();
+  let list = [pf.model, ...MODELS].filter((m,i,a) => m && a.indexOf(m)===i);
+  const ready = list.filter(m => !(COOL[m] > now)); if(ready.length) list = ready;
   let last = null;
   for(const m of list){
     let r, txt;
@@ -80,7 +83,7 @@ async function ai(system, parts, opts){
       if(pf.model!==m) savePrefs({model:m});
       try{ return JSON.parse(out.replace(/^```(?:json)?\s*/i,"").replace(/```\s*$/,"")); }catch(e){ throw mkErr("parse"); }
     }
-    if(r.status===429) throw mkErr("rate");
+    if(r.status===429){ COOL[m] = Date.now() + (/per.?day|daily|limit: ?0/i.test(txt) ? 6*3600e3 : 60e3); last = mkErr("rate"); continue; }
     if(r.status===404 || (r.status===400 && /model|not found|not supported/i.test(txt) && !/api.?key/i.test(txt))){ last = mkErr("model"); continue; }
     if(r.status===401 && /ACCESS_TOKEN_TYPE_UNSUPPORTED/i.test(txt)){ last = mkErr("badkey"); continue; }
     if(r.status===400 || r.status===401 || r.status===403) throw mkErr(/api.?key|permission/i.test(txt) ? "badkey" : "server");
@@ -136,12 +139,32 @@ async function audioPart(blob){
 let voices = [];
 function loadVoices(){ try{ voices = (window.speechSynthesis && speechSynthesis.getVoices()) || []; }catch(e){ voices = []; } }
 loadVoices(); try{ speechSynthesis.addEventListener("voiceschanged", loadVoices); }catch(e){}
+// How natural a voice usually sounds, from its name (higher is better).
+function voiceScore(v){
+  const n = v.name || "";
+  let s = 0;
+  if(/natural|neural/i.test(n)) s += 60;          // Microsoft Edge "Online (Natural)" voices
+  if(/premium/i.test(n)) s += 55;                 // Apple Premium voices (downloaded)
+  if(/enhanced/i.test(n)) s += 45;                // Apple Enhanced voices (downloaded)
+  if(/siri/i.test(n)) s += 40;
+  if(/^google/i.test(n)) s += 25;                 // Chrome's online Google voices
+  if(/online/i.test(n)) s += 10;
+  if(/GB|AU|IE|NZ/i.test(v.lang)) s += 8;
+  if(/compact|espeak|eloquence|grandpa|grandma|bad news|bells|boing|bubbles|cellos|jester|organ|trinoids|whisper|wobble|zarvox|albert|fred|junior|ralph|superstar|bahh/i.test(n)) s -= 80;
+  return s;
+}
+function englishVoices(){ return voices.filter(v => /^en[-_]/i.test(v.lang)).slice().sort((a,b) => voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name)); }
 function pickVoice(gender){
-  const en = voices.filter(v => /^en[-_]/i.test(v.lang));
+  const saved = prefs().voiceName;
+  if(saved && gender!=="male"){ const v = voices.find(x => x.name===saved); if(v) return v; }
+  const en = englishVoices();
   const gb = en.filter(v => /GB|AU|IE/i.test(v.lang));
   const pool = gb.length ? gb : en;
   const fem = /female|samantha|serena|kate|karen|moira|tessa|fiona|martha|libby|sonia|hazel|susan|zira|aria|jenny|natasha|google uk english female/i;
   const mal = /male|daniel|arthur|oliver|george|ryan|thomas|rishi|james|guy|google uk english male/i;
+  const best = pool.filter(v => voiceScore(v) >= 40);
+  if(gender==="female"){ const g = best.find(v => fem.test(v.name) && !/\bmale\b/i.test(v.name.replace(/female/i,""))); if(g) return g; }
+  if(gender==="male"){ const g = best.find(v => mal.test(v.name) && !/female/i.test(v.name)); if(g) return g; }
   if(gender==="female") return pool.find(v => fem.test(v.name) && !/\bmale\b/i.test(v.name.replace(/female/i,""))) || pool[0] || en[0] || null;
   if(gender==="male") return pool.find(v => mal.test(v.name) && !/female/i.test(v.name)) || pool[1] || pool[0] || en[0] || null;
   return pool[0] || en[0] || null;
@@ -150,7 +173,7 @@ function speak(text, gender, onend){
   if(!window.speechSynthesis){ if(onend) onend(); return; }
   const u = new SpeechSynthesisUtterance(text);
   const v = pickVoice(gender); if(v){ u.voice = v; u.lang = v.lang; } else u.lang = "en-GB";
-  u.rate = 0.95; if(!v && gender==="male") u.pitch = 0.8; if(!v && gender==="female") u.pitch = 1.15;
+  u.rate = voiceScore(v || {}) >= 40 ? 1 : 0.95; if(!v && gender==="male") u.pitch = 0.8; if(!v && gender==="female") u.pitch = 1.15;
   if(onend){ u.onend = onend; u.onerror = onend; }
   speechSynthesis.speak(u);
 }
@@ -227,9 +250,16 @@ let run = null, pita = null, homePita = null;
 const MOODLIST = '"normal","happy","angry","strict","confused","asking","sad","love","surprised","thinking"';
 const validMood = m => (window.Pita && Pita.MOODS.includes(m)) ? m : "normal";
 const mountPita = (el, mood) => (window.Pita && el) ? Pita.create(el, {mood: validMood(mood)}) : null;
-function openRun(html){ $("ieltsRun").hidden = false; $("ieltsRunIn").innerHTML = html; $("ieltsRun").scrollTop = 0; }
+let runHide = 0;
+function openRun(html){ clearTimeout(runHide); $("ieltsRun").classList.remove("closing"); $("ieltsRun").hidden = false; $("ieltsRunIn").innerHTML = html; $("ieltsRun").scrollTop = 0; }
 function stopAll(){ cancelRec(); stopSpeak(); if(run && run.tick){ clearInterval(run.tick); run.tick = null; } if(run && run.ctl && !run.ctl.done) run.ctl.finish("abort"); }
-function closeRun(){ if(run) run.aborted = true; stopAll(); if(run && run.wake) run.wake("abort"); Mic.close(); run = null; pita = null; $("ieltsRun").hidden = true; $("ieltsRunIn").innerHTML = ""; }
+function closeRun(){ if(run) run.aborted = true; stopAll(); if(run && run.wake) run.wake("abort"); Mic.close(); run = null; pita = null;
+  const box = $("ieltsRun"); if(box.hidden) return;
+  let rm = false; try{ rm = matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
+  const done = () => { box.classList.remove("closing"); box.hidden = true; $("ieltsRunIn").innerHTML = ""; };
+  if(rm){ done(); return; }
+  box.classList.add("closing"); clearTimeout(runHide); runHide = setTimeout(done, 220);
+}
 const head = (title, sub) => `<div class="section-head"><div><div class="label">${esc(sub||"")}</div><h2>${esc(title)}</h2></div><button class="btn ghost small" type="button" data-ia="close">Close</button></div>`;
 function wait(title, msg){
   openRun(head(title, "AI tutor") + `<div class="card ai-wait"><div class="pita-wrap small-pita" id="waitPita"></div><p>${esc(msg)}</p><p class="muted small">Keep this screen open.</p></div>`);
@@ -277,7 +307,7 @@ function listen(o){
     let mr; const chunks = [];
     try{ mr = new MediaRecorder(Mic.stream); }catch(e){ ctl.done = true; resolve({error:mkErr("nomic")}); return; }
     mr.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
-    const start = Date.now(); let speaking = false, above = 0, below = 0, first = 0;
+    const start = Date.now(); let speaking = false, above = 0, below = 0, first = 0, hinted = false;
     const tEl = $("stTimer"); if(tEl){ tEl.hidden = false; tEl.classList.remove("over"); }
     const finish = reason => {
       if(ctl.done) return; ctl.done = true; clearInterval(iv); if(pita) pita.level(0);
@@ -299,7 +329,13 @@ function listen(o){
       if(pita) pita.level(Math.min(1, r/(thr*4)));
       if(!speaking) Mic.noise = Mic.noise*0.96 + Math.min(r, 0.05)*0.04;
       if(r > thr){ above += 50; below = 0; } else { below += 50; above = Math.max(0, above-25); }
-      if(!speaking && above >= 200){ speaking = true; first = Date.now(); const h = $("stHint"); if(h) h.textContent = o.handsFree ? "I'm listening… I'll notice when you stop." : "I'm listening… tap “I'm done talking” when you finish."; }
+      const h = $("stHint");
+      const talkHint = o.handsFree ? "I'm listening… take your time. Tap “I'm done talking” to send it now." : "I'm listening… tap “I'm done talking” when you finish.";
+      if(!speaking && above >= 200){ speaking = true; first = Date.now(); if(h) h.textContent = talkHint; }
+      if(o.handsFree && speaking && h){
+        if(below >= 2000 && below < o.silenceMs){ const left = Math.ceil((o.silenceMs - below)/1000); h.textContent = "Still listening… Pita answers in "+left+"s. Keep going if you're thinking."; hinted = true; }
+        else if(hinted && below === 0){ h.textContent = talkHint; hinted = false; }
+      }
       const el = (Date.now()-start)/1000;
       if(tEl) tEl.textContent = mmss(el) + (o.maxSecs ? " / "+mmss(o.maxSecs) : "");
       if(o.handsFree && speaking && below >= o.silenceMs && Date.now()-first > 900) finish("ok");
@@ -345,11 +381,12 @@ async function listenUI(o){
   for(;;){
     if(!run || run.aborted) return null;
     if(pita) pita.state("listen");
-    setText("stHint", handsFree ? "Your turn. Just start talking. I'll notice when you finish." : "Your turn. Tap “I'm done talking” when you finish.");
+    setText("stHint", handsFree ? "Your turn. Just start talking. Pita waits "+Math.max(3, +prefs().pauseSecs || 10)+" seconds after you stop." : "Your turn. Tap “I'm done talking” when you finish.");
     setHTML("stCtrl", `<button class="btn" type="button" data-ia="st-done">I'm done talking</button><button class="btn ghost" type="button" data-ia="st-pause">Pause</button>`
       + (o.skip ? `<button class="btn ghost" type="button" data-ia="st-skip">Skip</button>` : "")
       + (o.end ? `<button class="btn ghost" type="button" data-ia="st-end">Finish &amp; get my band</button>` : ""));
-    const r = await listen(Object.assign({handsFree}, o));
+    const pause = Math.max(3, +prefs().pauseSecs || 10)*1000;
+    const r = await listen(Object.assign({handsFree}, o, {silenceMs: Math.max(o.silenceMs || 0, pause)}));
     if(pita) pita.state("idle");
     if(!r || !run || run.aborted) return null;
     if(r.error){ setText("stHint", errMsg(r.error)); return null; }
@@ -380,9 +417,25 @@ function speakingMenu(){
     </div>
     <label class="anchor" style="border:0;padding:0"><input type="checkbox" id="spHands"${pf.handsfree!==false ? " checked" : ""}><span>Hands-free: Pita notices when you stop talking</span></label>
     <label class="anchor" style="border:0;padding:0"><input type="checkbox" id="spVoice"${pf.voice!==false ? " checked" : ""}><span>Pita speaks out loud</span></label>
+    <div class="field"><label for="spPause">When I stop talking, Pita waits</label>
+      <div class="segs" id="spPause" role="group" aria-label="Pause before Pita answers">${[3,5,8,10,15].map(n => `<button type="button" data-ia="sp-pause" data-v="${n}" aria-pressed="${(+pf.pauseSecs||10)===n}">${n}s</button>`).join("")}</div></div>
+    <div class="field"><label for="spVoiceName">Pita's voice</label>
+      <div style="display:flex;gap:8px"><select id="spVoiceName" style="flex:1;min-width:0">${voiceOptions(pf.voiceName)}</select><button class="btn ghost small" type="button" data-ia="sp-hear">Hear Pita</button></div>
+      <p class="muted small" style="margin-top:6px">${voiceTip()}</p></div>
     <p class="muted small">Find a quiet place. Earphones work best, so Pita doesn't hear her own voice. The first time, tap Allow for the microphone.</p>`);
 }
-function readSpeakPrefs(){ const v = $("spVoice"), h = $("spHands"); const patch = {}; if(v) patch.voice = v.checked; if(h) patch.handsfree = h.checked; if(Object.keys(patch).length) savePrefs(patch); }
+function voiceOptions(sel){
+  const list = englishVoices();
+  if(!list.length) return `<option value="">Device voice</option>`;
+  return `<option value="">Automatic (best on this device)</option>` + list.map(v => `<option value="${esc(v.name)}"${v.name===sel ? " selected" : ""}>${esc(v.name.replace(/^Microsoft /,"").replace(/ - English.*$/,""))} (${esc(v.lang)})${voiceScore(v)>=40 ? " ★" : ""}</option>`).join("");
+}
+function voiceTip(){
+  const ua = navigator.userAgent || "";
+  if(/iPhone|iPad|Macintosh/i.test(ua) && "ontouchend" in document) return "For a nicer voice: iPhone/iPad Settings → Accessibility → Spoken Content → Voices → English, download a voice marked Enhanced or Premium, then pick it here. ★ = natural voice.";
+  if(/Edg\//.test(ua)) return "★ = natural voice. The “Natural” voices in Edge sound the most human.";
+  return "★ = natural voice. On a laptop, Microsoft Edge has free “Natural” voices that sound much more human.";
+}
+function readSpeakPrefs(){ const v = $("spVoice"), h = $("spHands"), vn = $("spVoiceName"); const patch = {}; if(vn) patch.voiceName = vn.value; if(v) patch.voice = v.checked; if(h) patch.handsfree = h.checked; if(Object.keys(patch).length) savePrefs(patch); }
 function avoidTopics(){ return sessions().filter(s => s.skill==="speaking").slice(-8).map(s => s.title).join("; "); }
 const cueHtml = c => `<div class="cue"><b>${esc(c.topic)}</b><p class="small" style="margin-top:6px">You should say:</p><ul class="small" style="margin:4px 0 6px;padding-left:1.2em">${c.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul><p class="small">${esc(c.final)}</p></div>`;
 const cueText = c => c.topic+". You should say: "+c.bullets.join("; ")+". "+c.final;
@@ -407,14 +460,14 @@ async function askStep(st){
     await prepTime(60);
     if(!run || run.aborted) return null;
     await tutorSays("All right. Remember, you have one to two minutes. Please start speaking now.", "normal");
-    const a = await listenUI({silenceMs:5000, maxSecs:120, waitSecs:30, skip: run.kind==="mock"});
+    const a = await listenUI({silenceMs:5000, maxSecs:150, waitSecs:30, skip: run.kind==="mock"});
     setHTML("stExtra", "");
     return a;
   }
   await tutorSays(st.q, "asking");
   if(!run || run.aborted) return null;
   if(pita) pita.mood("normal");
-  return listenUI({silenceMs: st.part===3 ? 2300 : 1800, maxSecs: st.part===3 ? 90 : 60, skip: run.kind==="mock"});
+  return listenUI({silenceMs: 0, maxSecs: st.part===3 ? 120 : 90, skip: run.kind==="mock"});
 }
 async function spMock(){
   const micP = Mic.open(); unlockSpeech();
@@ -493,7 +546,7 @@ async function talkLoop(r){
     run.history.push({who:"tutor", text:reply});
     await tutorSays(reply, r.mood);
     if(!run || run.aborted) return;
-    const ans = await listenUI({silenceMs:1700, maxSecs:90, end:true});
+    const ans = await listenUI({silenceMs:0, maxSecs:120, end:true});
     if(!run || run.aborted || !ans) return;
     if(ans.end && !(ans.blob && ans.spoke)){ talkFinish(); return; }
     if(ans.skipped || !ans.blob || !ans.spoke){ r = {reply:"No problem. Take your time. "+reply, mood:"normal"}; run.history.pop(); continue; }
@@ -957,6 +1010,8 @@ document.addEventListener("click", e => {
     case "go-reading": rdNew(); break;
     case "go-listening": listeningMenu(); break;
     case "sp-talk": readSpeakPrefs(); spTalk(); break;
+    case "sp-pause": { savePrefs({pauseSecs:+el.dataset.v}); el.parentNode.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b===el))); break; }
+    case "sp-hear": { const vn = $("spVoiceName"); if(vn) savePrefs({voiceName: vn.value}); stopSpeak(); speak("Hi Azel! I'm Pita. Shall we practise some speaking together?", "female"); break; }
     case "sp-mock": readSpeakPrefs(); spMock(); break;
     case "sp-quick": readSpeakPrefs(); spQuick(+el.dataset.part); break;
     case "sp-quick-1": case "sp-quick-2": case "sp-quick-3": spQuick(+a.slice(-1)); break;
@@ -990,7 +1045,7 @@ document.addEventListener("click", e => {
   }
 });
 document.addEventListener("input", e => { if(["cL","cR","cW","cS"].includes(e.target.id)) calc(); });
-document.addEventListener("change", e => { if(["cW","cS"].includes(e.target.id)) calc(); });
+document.addEventListener("change", e => { if(["cW","cS"].includes(e.target.id)) calc(); if(e.target.id==="spVoiceName") savePrefs({voiceName:e.target.value}); });
 document.addEventListener("keydown", e => { if(e.key==="Escape" && !$("ieltsRun").hidden && !(run && run.active && run.mode!=="report")) closeRun(); });
 
 window.__ieltsRender = render;
