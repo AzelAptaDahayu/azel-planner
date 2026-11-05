@@ -314,6 +314,17 @@ details.card > summary{cursor:pointer;font-weight:800}
 .sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom, 0px));background:var(--ink);color:#fff;padding:10px 16px;border-radius:14px;font-weight:800;z-index:30;width:max-content;max-width:calc(100% - 32px);font-size:.92rem;text-align:center}
 
+/* Class check */
+.classcheck{border:1.5px solid var(--yellow)}
+.cc-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.cc-row:last-of-type{border-bottom:0}
+.cc-info{display:flex;flex-direction:column;min-width:0}
+.cc-segs{grid-auto-flow:column;padding:3px}
+.cc-segs button{padding:7px 9px;font-size:.78rem}
+@media (max-width:430px){.cc-row{grid-template-columns:1fr}}
+.daynote{background:var(--yellow-soft);border-color:var(--yellow)}
+.daynote ul{margin:4px 0 0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+.daynote li .btn{margin-left:6px;padding:4px 10px}
 /* IELTS */
 .ielts-hero{border-radius:22px;padding:18px;background:linear-gradient(135deg,var(--blue-soft),var(--pink-soft) 60%,var(--yellow-soft));border:1px solid var(--line);display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow)}
 .bandrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}
@@ -409,6 +420,8 @@ nav.tabs button[aria-selected="true"]{color:var(--pink-ink);background:var(--pin
       <div class="next" id="nowNext"></div>
     </div>
 
+    <div class="card classcheck" id="classCheck" hidden></div>
+
     <div class="notice" id="missNotice" hidden></div>
 
     <div class="card" id="dueCard"></div>
@@ -423,6 +436,7 @@ nav.tabs button[aria-selected="true"]{color:var(--pink-ink);background:var(--pin
       <div class="weekbar"><button class="arrow" type="button" data-act="wk" data-d="-1" aria-label="Previous week">‹</button><b id="weekLabel"></b><button class="arrow" type="button" data-act="wk" data-d="1" aria-label="Next week">›</button></div>
       <div class="chips" id="chips" role="group" aria-label="Choose a day"></div>
       <div class="changes" id="changes"></div>
+      <div id="dayNotes"></div>
       <div class="timeline" id="timeline"></div>
       <div class="legend" id="legend"></div>
     </div>
@@ -912,6 +926,7 @@ function makeCode(){
 }
 function parseCode(txt){ const m = String(txt||"").trim().toLowerCase().match(/(?:k=)?([a-z0-9]{24,64})\s*$/); return m ? m[1] : null; }
 function loadScript(src){ return new Promise((res, rej) => { const el = document.createElement("script"); el.src = src; el.onload = res; el.onerror = () => rej(new Error("Couldn't load "+src)); document.head.appendChild(el); }); }
+function cutoffDay(days){ const d = new Date(); d.setDate(d.getDate()-days); return ymd(d); }
 function cutoff(days){ const d = new Date(); d.setDate(d.getDate()-days); return ymd(d); }
 const COL_QUERY = {focuslog: q => q.where("d", ">=", cutoff(60)), anchors: q => q.where("d", ">=", cutoff(7))};
 function announce(root){ window.__planner = {root}; document.dispatchEvent(new CustomEvent("planner-ready", {detail:{root}})); }
@@ -1043,12 +1058,67 @@ function overlay(list, nb){
   out.push(nb);
   return out;
 }
+const LOGI = new Set(["Prepare for campus","Travel to campus","Travel and settle in","Go home","Free, then prepare for campus"]);
+const plannerPrefs = () => Object.assign({travel:45, confirmed:{}}, byId("prefs","planner") || {});
+function savePlannerPrefs(patch){ const p = Object.assign({}, byId("prefs","planner") || {}, patch, {id:"planner"}); delete p.updatedAt; put("prefs", p); }
+const baseOnline = course => { const c = BUILTIN[course]; return !!(c && /online/i.test(c.room || "")); };
+const byStart = (x,y) => toMin(x.s)-toMin(y.s);
+function fillGaps(list){
+  const out = list.slice(); let cur = 5*60;
+  list.slice().sort(byStart).forEach(b => {
+    const s = toMin(b.s), e = toMin(b.e);
+    if(s - cur >= 10 && s <= 22*60+30) out.push({s:fromMin(cur), e:fromMin(s), type:"free", title:"Free time", note:"No travel needed here. Tap Ideas so this time doesn't go to TikTok.", gen:true});
+    cur = Math.max(cur, e);
+  });
+  return out;
+}
+/* Rebuilds getting ready / travel / going home around the classes that really happen on campus that day. */
+function replan(list, dow){
+  const T = Math.max(10, +plannerPrefs().travel || 45);
+  // the normal campus window for this weekday (first and last thing on campus)
+  const base = WEEK[dow].filter(b => (b[2]==="class" && !baseOnline(b[5])) || b[2]==="asdos");
+  const baseAll = WEEK[dow].filter(b => b[2]==="class" || b[2]==="asdos");
+  const F0 = base.length ? Math.min(...baseAll.map(b => toMin(b[0]))) : null, L0 = base.length ? Math.max(...baseAll.map(b => toMin(b[1]))) : null;
+  const cls = list.filter(b => b.type==="class").sort(byStart);
+  const campus = cls.filter(b => !b.online);
+  let F = null, L = null;
+  if(campus.length){
+    F = toMin(campus[0].s); L = Math.max(...campus.map(b => toMin(b.e)));
+    list.filter(b => b.type==="asdos").forEach(b => { F = Math.min(F, toMin(b.s)); L = Math.max(L, toMin(b.e)); });
+    cls.filter(b => b.online).forEach(b => {
+      const s = toMin(b.s), e = toMin(b.e);
+      if(s>=F && e<=L) b.fromCampus = true;
+      else if(s>=L && s-L < T+20){ b.fromCampus = true; L = Math.max(L, e); }
+      else if(e<=F && F-e < T+20){ b.fromCampus = true; F = Math.min(F, s); }
+    });
+  }
+  // keep the usual morning / going-home plan when that side of the day didn't change
+  const keepMorning = F!==null && F===F0, keepHome = L!==null && L===L0;
+  const MORNING = new Set(["Prepare for campus","Travel to campus","Travel and settle in","Free, then prepare for campus"]);
+  list = list.filter(b => b.type==="class" || !LOGI.has(b.title) || (keepMorning && MORNING.has(b.title)) || (keepHome && b.title==="Go home"));
+  const hardAt = (a,z) => list.some(b => HARD.has(b.type) && toMin(b.s) < z && toMin(b.e) > a);
+  if(F!==null){
+    if(!keepMorning){
+      list = overlay(list, {s:fromMin(Math.max(0,F-T-30)), e:fromMin(Math.max(0,F-T)), type:"routine", title:"Get ready for campus", note:"Pack your bag, charge your phone and laptop.", gen:true});
+      list = overlay(list, {s:fromMin(Math.max(0,F-T)), e:fromMin(F), type:"move", title:"Travel to campus", note:"Leave on time. No scrolling on the way.", gen:true});
+    }
+    if(!keepHome) list = overlay(list, {s:fromMin(L), e:fromMin(Math.min(1440, L+T)), type:"move", title:"Go home", note:"", gen:true});
+  }
+  cls.filter(b => b.online).forEach(b => {
+    const s = toMin(b.s);
+    b.note = (b.modChanged ? "Online today. " : "") + (b.fromCampus ? "Join from campus: find a quiet spot or the library, and use earphones." : "Join from home.") + (b.extraNote ? " · "+b.extraNote : "");
+    if(!hardAt(s-10, s)) list = overlay(list, {s:fromMin(Math.max(0,s-10)), e:b.s, type:"routine", title: b.fromCampus ? "Find a quiet spot" : "Get ready for the online class", note: b.fromCampus ? "Earphones in, link open, phone on silent." : "Laptop charged, quiet spot, link open, phone face down.", gen:true});
+  });
+  return fillGaps(list);
+}
 function blocksFor(date){
   const dow = parseYmd(date).getDay();
   let list = WEEK[dow].map(b => ({s:b[0], e:b[1], type:b[2], title:b[3], note:b[4]||"", course:b[5]||null}));
   const adj = D.cols.adjust;
+  let changed = false;
   adj.forEach(a => {
     if((a.kind==="move" || a.kind==="cancel") && a.date===date){
+      changed = true;
       list = list.map(b => (b.type==="class" && b.course===a.course) ? Object.assign({}, b, {
         type:"free", title:"Free time",
         note: labelInfo(a.course).name + (a.kind==="move" ? " moved to "+fmtD(a.newDate)+", "+a.start : " is cancelled") + ". Tap Ideas so this time doesn't go to TikTok.",
@@ -1057,14 +1127,22 @@ function blocksFor(date){
   });
   adj.forEach(a => {
     if((a.kind==="move" || a.kind==="extra") && a.newDate===date && a.start && a.end && a.start < a.end){
-      const S = toMin(a.start);
-      const busy = list.some(b => HARD.has(b.type) && toMin(b.e) > S-30 && toMin(b.s) < S);
-      if(S>=30 && !busy) list = overlay(list, {s:fromMin(S-30), e:a.start, type:"move", title:"Get to class", note:"Leave on time. No scrolling on the way."});
+      changed = true;
       list = overlay(list, {s:a.start, e:a.end, type:"class", title:labelInfo(a.course).name,
         note: a.kind==="move" ? "Moved here from "+fmtD(a.date)+" (this time only)"+(a.note?" · "+a.note:"") : (a.note || "Extra class"),
-        course:a.course, adj:a.id, changed:true});
+        course:a.course, adj:a.id, changed:true, mode:a.mode || null});
     }
   });
+  const mods = adj.filter(a => (a.kind==="online" || a.kind==="offline") && a.date===date);
+  if(mods.length) changed = true;
+  list.forEach(b => {
+    if(b.type!=="class") return;
+    const m = mods.find(a => a.course===b.course);
+    b.extraNote = b.changed ? b.note : (m && m.note ? m.note : "");
+    b.online = m ? m.kind==="online" : b.mode ? b.mode==="online" : baseOnline(b.course);
+    if(m){ b.changed = true; b.modChanged = true; b.note = m.kind==="online" ? "Online today" : "On campus today"; }
+  });
+  if(changed) list = replan(list, dow);
   D.cols.events.forEach(ev => {
     if(ev.date===date && ev.start){
       const e = ev.end && ev.end > ev.start ? ev.end : fromMin(Math.min(1440, toMin(ev.start)+60));
@@ -1077,6 +1155,7 @@ function blocksFor(date){
   });
   list = list.filter(b => toMin(b.e) > toMin(b.s));
   list.sort((x,y) => toMin(x.s)-toMin(y.s) || (HARD.has(x.type) ? -1 : 1));
+  list.changed = changed;
   return list;
 }
 function findBlock(list, mins){
@@ -1144,7 +1223,7 @@ function renderTimeline(){
   const shownPlan = new Set();
   $("timeline").innerHTML = list.map((b,i) => {
     let meta = "";
-    if(b.type==="class" && BUILTIN[b.course]){ const c = BUILTIN[b.course]; meta = `${c.code} · ${c.room} · ${c.sks} SKS`; }
+    if(b.type==="class" && BUILTIN[b.course]){ const c = BUILTIN[b.course]; meta = `${c.code} · ${b.online ? "Online" : c.room} · ${c.sks} SKS`; }
     if(b.type==="study" && !b.planned) meta = "15 min focus + 5 min break";
     const clash = HARD.has(b.type) ? list.filter(o => o!==b && HARD.has(o.type) && toMin(o.s)<toMin(b.e) && toMin(o.e)>toMin(b.s)).map(o => o.title) : [];
     let acts = "";
@@ -1166,6 +1245,8 @@ function adjText(a){
   if(a.kind==="cancel") return `<b>${esc(n)}</b> cancelled on ${fmtD(a.date)}`;
   if(a.kind==="extra") return `Extra <b>${esc(n)}</b>: ${fmtD(a.newDate)}, ${a.start}–${a.end}`;
   if(a.kind==="plan") return `Free-time plan: ${fmtD(a.newDate)}, ${a.plan.s}–${a.plan.e}`;
+  if(a.kind==="online") return `<b>${esc(n)}</b> online on ${fmtD(a.date)}`;
+  if(a.kind==="offline") return `<b>${esc(n)}</b> on campus on ${fmtD(a.date)}`;
   return "Change";
 }
 function renderChanges(){
@@ -1191,7 +1272,7 @@ function renderNow(){
   $("nowCard").style.setProperty("--tc", tc(b.type));
   $("nowTitle").textContent = b.title;
   let n = b.note;
-  if(b.type==="class" && BUILTIN[b.course]){ const c = BUILTIN[b.course]; n = c.code+" · "+c.room+" · "+c.sks+" SKS"+(b.changed ? " · "+b.note : ""); }
+  if(b.type==="class" && BUILTIN[b.course]){ const c = BUILTIN[b.course]; n = c.code+" · "+(b.online ? "Online" : c.room)+" · "+c.sks+" SKS"+(b.changed || b.online ? " · "+b.note : ""); }
   $("nowNote").textContent = n || TYPES[b.type] || "";
   $("nowBar").style.width = Math.min(100, Math.max(0, (minsF-a)/(z-a)*100))+"%";
   $("nowRange").textContent = b.s+" – "+(b.e==="24:00" ? "05:00" : b.e);
@@ -1205,6 +1286,73 @@ function renderNow(){
   if(nx) $("nowNext").innerHTML = `<span class="label">Up next</span> &nbsp;<b>${nx.s}</b> &nbsp;${esc(nx.title)}`;
 }
 let lastActs = null;
+
+
+/* ================= class check (campus / online / cancelled) ================= */
+function checkDate(){ const now = new Date(); return now.getHours() >= 18 ? ymd(new Date(now.getTime()+864e5)) : today(); }
+function classRows(date){
+  const dow = parseYmd(date).getDay(); const rows = [];
+  WEEK[dow].forEach(b => {
+    if(b[2]!=="class") return;
+    const course = b[5]; const adj = D.cols.adjust.filter(a => a.course===course && a.date===date);
+    const mv = adj.find(a => a.kind==="move"), cn = adj.find(a => a.kind==="cancel"), on = adj.find(a => a.kind==="online"), off = adj.find(a => a.kind==="offline");
+    const mode = cn ? "cancel" : on ? "online" : off ? "campus" : baseOnline(course) ? "online" : "campus";
+    rows.push({course, s:b[0], e:b[1], mode, moved: mv || null});
+  });
+  D.cols.adjust.filter(a => (a.kind==="move" || a.kind==="extra") && a.newDate===date).forEach(a => {
+    rows.push({course:a.course, s:a.start, e:a.end, mode: a.mode || (baseOnline(a.course) ? "online" : "campus"), movedIn:a});
+  });
+  return rows.sort(byStart);
+}
+function renderClassCheck(){
+  const el = $("classCheck"); if(!el) return;
+  const date = checkDate(); const rows = classRows(date);
+  if(!rows.length || !D.loaded.adjust){ el.hidden = true; return; }
+  el.hidden = false;
+  const pp = plannerPrefs(); const ok = !!(pp.confirmed || {})[date];
+  const isTom = date!==today();
+  if(ok){
+    el.innerHTML = `<div class="section-head"><span><b>${isTom ? "Tomorrow's" : "Today's"} classes confirmed</b> <span class="pos">✓</span></span><button class="linkbtn" type="button" data-act="unconfirm" data-date="${date}">Edit</button></div>`;
+    return;
+  }
+  const chip = (r, m, label) => `<button type="button" data-act="modality" data-date="${date}" data-course="${r.course}" data-mode="${m}"${r.movedIn ? ` data-adj="${r.movedIn.id}"` : ""} aria-pressed="${r.mode===m}">${label}</button>`;
+  el.innerHTML = `<div class="section-head"><div><div class="label">${isTom ? "Tomorrow · "+fmtD(date) : "Today"}</div><h2>Are your classes as usual?</h2></div></div>
+    <p class="small muted">Tap what's really happening. The timetable and travel plan update by themselves.</p>
+    ${rows.map(r => `<div class="cc-row"><div class="cc-info"><b>${esc(labelInfo(r.course).name)}</b><span class="small muted">${r.s}–${r.e}${r.movedIn ? " · moved here" : ""}</span></div>
+      ${r.moved ? `<span class="small muted">Moved to ${fmtD(r.moved.newDate)}</span>` : `<div class="segs cc-segs">${chip(r,"campus","Campus")}${chip(r,"online","Online")}${r.movedIn ? "" : chip(r,"cancel","Cancelled")}</div>`}</div>`).join("")}
+    <div class="section-head"><label class="small muted" for="travelSel">Travel time to campus</label><select id="travelSel" style="width:auto">${[15,20,30,45,60,75,90].map(v => `<option value="${v}"${v===(+pp.travel||45)?" selected":""}>${v} min</option>`).join("")}</select></div>
+    <button class="btn" type="button" data-act="confirmday" data-date="${date}">All correct</button>`;
+}
+function setModality(date, course, mode, adjId){
+  if(adjId){ const a = byId("adjust", adjId); if(a){ const c = Object.assign({}, a, {mode: mode==="online" ? "online" : "campus"}); put("adjust", c); } }
+  else {
+    D.cols.adjust.filter(a => a.course===course && a.date===date && ["online","offline","cancel"].includes(a.kind)).forEach(a => del("adjust", a.id));
+    const base = baseOnline(course) ? "online" : "campus";
+    if(mode==="cancel") put("adjust", {kind:"cancel", course, date, createdAt:Date.now()});
+    else if(mode!==base) put("adjust", {kind: mode==="online" ? "online" : "offline", course, date, createdAt:Date.now()});
+  }
+  selDate = date; syncWeek(); renderAll();
+  const n = labelInfo(course).name;
+  toast(mode==="online" ? n+" is online. Travel plan updated." : mode==="cancel" ? n+" is cancelled. Tap Ideas for that free time." : n+" is on campus.");
+}
+function renderDayNotes(){
+  const el = $("dayNotes"); if(!el) return;
+  const list = blocksFor(selDate);
+  if(!list.changed){ el.innerHTML = ""; return; }
+  const items = [];
+  const cls = list.filter(b => b.type==="class");
+  cls.filter(b => b.online).forEach(b => items.push(`<b>${esc(b.title)}</b> is online (${b.s}–${b.e}): ${b.fromCampus ? "join from campus" : "join from home"}.`));
+  const campus = cls.filter(b => !b.online);
+  const baseCampus = WEEK[parseYmd(selDate).getDay()].some(b => b[2]==="class" && !baseOnline(b[5]));
+  if(!campus.length && baseCampus) items.push("No campus today, so no travel. You get that time back.");
+  else if(campus.length){
+    const go = list.find(b => b.gen && b.title==="Travel to campus"), home = list.find(b => b.gen && b.title==="Go home");
+    if(go) items.push(`Leave for campus at <b>${go.s}</b>${home ? `, head home at <b>${home.s}</b>` : ""}.`);
+  }
+  const free = list.filter(b => b.type==="free" && !b.planned && toMin(b.e)-toMin(b.s) >= 30);
+  free.forEach(b => items.push(`Free ${b.s}–${b.e} (${durTxt(toMin(b.e)-toMin(b.s))}) <button class="btn small yellowbtn" type="button" data-act="ideas" ${ideaAttrs(selDate,b)}>Ideas</button>`));
+  el.innerHTML = items.length ? `<div class="card daynote"><b>${selDate===today() ? "Today's" : fmtD(selDate)+"'s"} plan changed</b><ul class="small">${items.map(i => `<li>${i}</li>`).join("")}</ul></div>` : "";
+}
 
 /* ================= anchors ================= */
 const ANCHORS = [
@@ -1521,7 +1669,7 @@ let chKind = "move";
 function chSheet(pre){
   pre = pre || {}; chKind = "move";
   openP("Change schedule", `
-    <div class="segs" id="chKinds">${[["move","Class moved"],["cancel","Cancelled"],["extra","Extra class"]].map(([k,n]) => `<button type="button" data-act="chkind" data-k="${k}" aria-pressed="${k==="move"}">${n}</button>`).join("")}</div>
+    <div class="segs" id="chKinds">${[["move","Moved"],["cancel","Cancelled"],["online","Online"],["extra","Extra"]].map(([k,n]) => `<button type="button" data-act="chkind" data-k="${k}" aria-pressed="${k==="move"}">${n}</button>`).join("")}</div>
     ${field("chCourse","Course",`<select id="chCourse">${courseOptions(pre.course || "mon")}</select>`)}
     <div id="chOrig" class="section">${field("chDate","Date of the normal class",`<input class="in" type="date" id="chDate">`)}<p class="muted small" id="chInfo"></p></div>
     <div id="chNew" class="section">${field("chNewDate","New date",`<input class="in" type="date" id="chNewDate">`)}
@@ -1536,7 +1684,7 @@ function chSheet(pre){
 let chPre = null;
 function chFill(){
   const course = $("chCourse").value; const times = classTimes(course);
-  $("chOrig").hidden = chKind==="extra"; $("chNew").hidden = chKind==="cancel";
+  $("chOrig").hidden = chKind==="extra"; $("chNew").hidden = chKind==="cancel" || chKind==="online";
   document.querySelectorAll("#chKinds button").forEach(b => b.setAttribute("aria-pressed", b.dataset.k===chKind));
   const base = chPre || today();
   if(times.length){
@@ -1560,10 +1708,11 @@ function saveChg(){
     const date = $("chDate").value; if(!date) return err("Pick the date of the normal class.");
     const dow = parseYmd(date).getDay();
     if(!classTimes(course).some(x => x.dow===dow)) return err(name+" has no class on "+DAYS_LONG[dow]+". "+$("chInfo").textContent);
-    if(D.cols.adjust.some(a => (a.kind==="move"||a.kind==="cancel") && a.course===course && a.date===date)) return err("There's already a change for this class on "+fmtD(date)+". Undo it first.");
+    if(D.cols.adjust.some(a => ["move","cancel","online","offline"].includes(a.kind) && a.course===course && a.date===date)) return err("There's already a change for this class on "+fmtD(date)+". Undo it first.");
+    if(chKind==="online" && baseOnline(course)) return err(name+" is already an online class.");
     rec.date = date;
   }
-  if(chKind!=="cancel"){
+  if(chKind!=="cancel" && chKind!=="online"){
     const nd = $("chNewDate").value, s = $("chStart").value, e = $("chEnd").value;
     if(!nd || !s || !e) return err("Fill in the new date, start and end time.");
     if(e <= s) return err("The end time must be after the start time.");
@@ -1575,7 +1724,7 @@ function saveChg(){
   const focusDate = rec.newDate || rec.date;
   selDate = rec.date || rec.newDate; syncWeek();
   renderAll();
-  toast(chKind==="extra" ? "Extra class added on "+fmtD(focusDate)+"." : fmtD(rec.date)+" is free now. Tap Ideas for good things to do.");
+  toast(chKind==="extra" ? "Extra class added on "+fmtD(focusDate)+"." : chKind==="online" ? name+" is online on "+fmtD(rec.date)+". Your travel plan is updated." : fmtD(rec.date)+" is free now. Tap Ideas for good things to do.");
 }
 function syncWeek(){
   const t = parseYmd(today()); const s = parseYmd(selDate);
@@ -1594,7 +1743,7 @@ function getIdeas(ctx){
   const nodue = open.filter(t => !t.due);
   const day = blocksFor(ctx.date);
   const S = toMin(ctx.s), E = toMin(ctx.e);
-  const isCls = b => b.type==="class" || b.type==="asdos";
+  const isCls = b => (b.type==="class" && (!b.online || b.fromCampus)) || b.type==="asdos";
   const campus = day.some(b => isCls(b) && toMin(b.e)<=S+5 && toMin(b.e)>=S-120) || day.some(b => isCls(b) && toMin(b.s)>=E-5 && toMin(b.s)<=E+90);
   const ideas = [];
   const short = s => s.length>32 ? s.slice(0,30)+"…" : s;
@@ -1774,6 +1923,9 @@ document.addEventListener("click", e => {
   const A = el.dataset.act, id = el.dataset.id;
   switch(A){
     case "sync": syncSheet(); break;
+    case "modality": setModality(el.dataset.date, el.dataset.course, el.dataset.mode, el.dataset.adj); break;
+    case "confirmday": { const c = Object.assign({}, plannerPrefs().confirmed || {}); c[el.dataset.date] = true; Object.keys(c).forEach(k => { if(k < cutoffDay(14)) delete c[k]; }); savePlannerPrefs({confirmed:c}); toast("Great. Have a good day!"); break; }
+    case "unconfirm": { const c = Object.assign({}, plannerPrefs().confirmed || {}); delete c[el.dataset.date]; savePlannerPrefs({confirmed:c}); break; }
     case "copylink": { const link = shareLink(); const box = $("linkBox");
       const fallback = () => { if(box){ box.focus(); box.select(); } toast("Link selected. Copy it from the box."); };
       try{ navigator.clipboard.writeText(link).then(() => toast("Link copied."), fallback); }catch(err){ fallback(); } break; }
@@ -1858,6 +2010,7 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("change", e => {
   if(e.target.id==="impIn") importFile(e.target);
+  if(e.target.id==="travelSel"){ savePlannerPrefs({travel:+e.target.value}); toast("Travel time saved."); }
   if(e.target.id==="chCourse") chFill();
   if(e.target.id==="chStart" && chKind!=="cancel"){ const dur = +e.target.dataset.dur || 150; $("chEnd").value = fromMin(Math.min(1439, toMin(e.target.value)+dur)); }
 });
@@ -1868,7 +2021,7 @@ function renderAll(){
   if(renderQueued) return; renderQueued = true;
   setTimeout(() => {
     renderQueued = false;
-    safe(fillSelects); safe(renderNow); safe(renderChips); safe(renderTimeline); safe(renderChanges); safe(renderDue);
+    safe(fillSelects); safe(renderNow); safe(renderChips); safe(renderTimeline); safe(renderChanges); safe(renderDayNotes); safe(renderClassCheck); safe(renderDue);
     safe(renderTodo); safe(renderCourses); safe(renderCal); safe(renderAnchors); safe(renderStats); safe(renderSyncBtn); safe(() => { if(window.__ieltsRender) window.__ieltsRender(); });
   }, 0);
 }
@@ -1881,7 +2034,7 @@ setInterval(paintTimer, 500);
 let lastMin = -1, lastDay = today();
 setInterval(() => {
   const d = new Date(); renderNow();
-  if(d.getMinutes()!==lastMin){ lastMin = d.getMinutes(); safe(renderTimeline); safe(renderDue); safe(renderTodo); }
+  if(d.getMinutes()!==lastMin){ lastMin = d.getMinutes(); safe(renderTimeline); safe(renderDue); safe(renderTodo); safe(renderClassCheck); }
   if(today()!==lastDay){ lastDay = today(); weekOff = 0; selDate = today(); renderAll(); renderAnchors(); renderStats(); }
 }, 5000);
 document.addEventListener("visibilitychange", () => { if(!document.hidden){ renderAll(); paintTimer(); if(timer.mode==="focus") keepAwake(true); } });
