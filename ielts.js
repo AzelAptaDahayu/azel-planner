@@ -35,7 +35,7 @@ function latestBand(skill){
 }
 
 /* ---------- AI (Gemini) ---------- */
-const MODELS = ["gemini-flash-latest","gemini-3.8-flash","gemini-3.5-flash-lite","gemini-2.5-flash"];
+const MODELS = ["gemini-flash-latest","gemini-3.8-flash","gemini-3.6-flash","gemini-3.5-flash-lite","gemini-3.1-flash-lite"];
 const STYLE = {
   strict: "You are a strict, senior IELTS examiner. Hold the candidate to the band 9 standard. Be blunt and direct: no compliments unless truly earned, no softening phrases, name every important error plainly. Never insult, swear at, mock or belittle the candidate as a person. Be tough on the work, never on the person.",
   friendly: "You are a warm, encouraging IELTS coach. Begin with what genuinely went well, then give clear and honest corrections. Encouraging tone, but never inflate band scores."
@@ -82,6 +82,7 @@ async function ai(system, parts, opts){
     }
     if(r.status===429) throw mkErr("rate");
     if(r.status===404 || (r.status===400 && /model|not found|not supported/i.test(txt) && !/api.?key/i.test(txt))){ last = mkErr("model"); continue; }
+    if(r.status===401 && /ACCESS_TOKEN_TYPE_UNSUPPORTED/i.test(txt)){ last = mkErr("badkey"); continue; }
     if(r.status===400 || r.status===401 || r.status===403) throw mkErr(/api.?key|permission/i.test(txt) ? "badkey" : "server");
     last = mkErr("server");
   }
@@ -672,9 +673,9 @@ function settingsForm(focusKey){
       <ol class="small" style="margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px">
         <li>On your laptop, open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> and sign in with your Google account.</li>
         <li>Click <b>Create API key</b>. If it asks for a project, choose <b>azel-planner</b>.</li>
-        <li>Copy the key (it starts with <b>AIza</b>) and paste it below.</li>
+        <li>Click <b>Copy key</b> (it starts with <b>AQ.</b> or <b>AIza</b>) and paste it below.</li>
       </ol>
-      ${field("stKey","Gemini API key",`<input class="in" id="stKey" type="password" autocomplete="off" placeholder="${pf.key ? "Leave empty to keep your current key" : "AIza…"}">`)}
+      ${field("stKey","Gemini API key",`<input class="in" id="stKey" type="password" autocomplete="off" placeholder="${pf.key ? "Leave empty to keep your current key" : "AQ.…"}">`)}
       <p class="small muted">The key is saved in your private planner and syncs to your devices. It's never put on GitHub. With a free key, Google may use your practice answers to improve its products, so don't put personal details in your answers.</p>
       <div class="notice" id="stMsg" hidden></div>
       <div class="btn-row"><button class="btn" type="button" data-ia="st-save">Save</button>${pf.key ? `<button class="btn ghost" type="button" data-ia="st-test">Test my AI tutor</button>` : ""}</div>
@@ -686,7 +687,7 @@ async function settingsSave(){
   const key = $("stKey").value.trim();
   const patch = {target:+$("stTarget").value, testDate:$("stDate").value, voice:$("stVoice").checked};
   if(key){
-    if(!/^AIza[0-9A-Za-z_\-]{20,}$/.test(key)){ $("stMsg").hidden = false; $("stMsg").textContent = "That doesn't look like a Gemini key. It should start with AIza."; return; }
+    if(!/^(AIza|AQ\.)\S{20,}$/.test(key)){ $("stMsg").hidden = false; $("stMsg").textContent = "That doesn't look like a Gemini key. It should start with AQ. or AIza."; return; }
     patch.key = key; patch.model = "";
   }
   savePrefs(patch);
