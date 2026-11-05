@@ -177,6 +177,11 @@ function render(){
       <div class="skillchips">${SKILLS.map(s => `<div class="skchip" style="--sc:${SK[s].color}"><span>${SK[s].name}</span><b>${fmtBand(bands[s])}</b></div>`).join("")}</div>
     </div>`;
   $("ieKeyNote").hidden = !!pf.key;
+  const all4 = overall!=null;
+  const hm = !pf.key ? "asking" : !sessions().length ? "happy" : all4 && overall>=t ? "love" : "normal";
+  const line = !pf.key ? "Hi Azel! Give me my key in Settings so I can talk with you." : !sessions().length ? "Hi Azel! I'm Pita, your IELTS tutor. Tap me and let's talk!" : all4 && overall>=t ? "You're at your target. I'm so proud of you!" : "Ready for a quick chat? Tap me to practise speaking.";
+  if($("iePita")){ if(!homePita || !$("iePita").firstChild) homePita = mountPita($("iePita"), hm); else homePita.mood(hm); }
+  if($("iePitaSay")) $("iePitaSay").textContent = line;
   document.querySelectorAll('[data-ia="style"]').forEach(b => b.setAttribute("aria-pressed", String((pf.style==="friendly") === (b.dataset.v==="friendly"))));
   $("ieChart").innerHTML = chartSvg(t);
   const recent = sessions().slice().reverse().slice(0, 12);
@@ -218,36 +223,202 @@ function calc(){
 }
 
 /* ---------- practice overlay ---------- */
-let run = null;
+let run = null, pita = null, homePita = null;
+const MOODLIST = '"normal","happy","angry","strict","confused","asking","sad","love","surprised","thinking"';
+const validMood = m => (window.Pita && Pita.MOODS.includes(m)) ? m : "normal";
+const mountPita = (el, mood) => (window.Pita && el) ? Pita.create(el, {mood: validMood(mood)}) : null;
 function openRun(html){ $("ieltsRun").hidden = false; $("ieltsRunIn").innerHTML = html; $("ieltsRun").scrollTop = 0; }
-function stopAll(){ cancelRec(); stopSpeak(); if(run && run.tick){ clearInterval(run.tick); run.tick = null; } }
-function closeRun(){ stopAll(); run = null; $("ieltsRun").hidden = true; $("ieltsRunIn").innerHTML = ""; }
+function stopAll(){ cancelRec(); stopSpeak(); if(run && run.tick){ clearInterval(run.tick); run.tick = null; } if(run && run.ctl && !run.ctl.done) run.ctl.finish("abort"); }
+function closeRun(){ if(run) run.aborted = true; stopAll(); if(run && run.wake) run.wake("abort"); Mic.close(); run = null; pita = null; $("ieltsRun").hidden = true; $("ieltsRunIn").innerHTML = ""; }
 const head = (title, sub) => `<div class="section-head"><div><div class="label">${esc(sub||"")}</div><h2>${esc(title)}</h2></div><button class="btn ghost small" type="button" data-ia="close">Close</button></div>`;
-function wait(title, msg){ openRun(head(title, "AI tutor") + `<div class="card ai-wait"><div class="spinner" aria-hidden="true"></div><p>${esc(msg)}</p><p class="muted small">Keep this screen open.</p></div>`); }
+function wait(title, msg){
+  openRun(head(title, "AI tutor") + `<div class="card ai-wait"><div class="pita-wrap small-pita" id="waitPita"></div><p>${esc(msg)}</p><p class="muted small">Keep this screen open.</p></div>`);
+  const p = mountPita($("waitPita"), "thinking"); if(p) p.state("think");
+}
 function fail(title, e, retry){
-  openRun(head(title, "AI tutor") + `<div class="card"><p class="neg"><b>${esc(errMsg(e))}</b></p>
+  openRun(head(title, "AI tutor") + `<div class="card ai-wait"><div class="pita-wrap small-pita" id="failPita"></div><p class="neg"><b>${esc(errMsg(e))}</b></p>
     <div class="btn-row">${retry ? `<button class="btn" type="button" data-ia="${retry}">Try again</button>` : ""}${e && (e.code==="nokey"||e.code==="badkey") ? `<button class="btn ghost" type="button" data-ia="settings">Open settings</button>` : ""}</div></div>`);
+  mountPita($("failPita"), e && (e.code==="nokey"||e.code==="badkey") ? "asking" : "sad");
 }
 function tickStart(fn){ if(run.tick) clearInterval(run.tick); run.tick = setInterval(fn, 250); fn(); }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const waitFor = () => new Promise(res => { run.wake = v => { run.wake = null; res(v); }; });
+
+/* ---------- microphone with voice detection ---------- */
+const Mic = {stream:null, ctx:null, an:null, buf:null, bbuf:null, noise:0.008,
+  async open(){
+    if(!navigator.mediaDevices || !window.MediaRecorder) throw mkErr("nomic");
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!this.ctx && AC){ try{ this.ctx = new AC(); }catch(e){} }
+    if(this.ctx){ try{ this.ctx.resume(); }catch(e){} }
+    if(this.stream && this.stream.active) return;
+    try{ this.stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}}); }
+    catch(e){ throw mkErr("mic"); }
+    if(this.ctx){
+      try{ await this.ctx.resume(); }catch(e){}
+      const src = this.ctx.createMediaStreamSource(this.stream);
+      this.an = this.ctx.createAnalyser(); this.an.fftSize = 1024; src.connect(this.an);
+      this.buf = new Float32Array(this.an.fftSize); this.bbuf = new Uint8Array(this.an.fftSize);
+    }
+  },
+  rms(){
+    if(!this.an) return 0;
+    let s = 0;
+    if(this.an.getFloatTimeDomainData){ this.an.getFloatTimeDomainData(this.buf); for(let i=0;i<this.buf.length;i++) s += this.buf[i]*this.buf[i]; return Math.sqrt(s/this.buf.length); }
+    this.an.getByteTimeDomainData(this.bbuf); for(let i=0;i<this.bbuf.length;i++){ const v = (this.bbuf[i]-128)/128; s += v*v; } return Math.sqrt(s/this.bbuf.length);
+  },
+  close(){ if(this.stream) this.stream.getTracks().forEach(t => t.stop()); this.stream = null; this.an = null; if(this.ctx){ try{ this.ctx.close(); }catch(e){} } this.ctx = null; }
+};
+function unlockSpeech(){ try{ if(window.speechSynthesis){ const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } }catch(e){} }
+/* Records one answer. Stops by itself after a pause in speech (hands-free), or when a button finishes it. */
+function listen(o){
+  return new Promise(resolve => {
+    const ctl = run.ctl = {done:false};
+    let mr; const chunks = [];
+    try{ mr = new MediaRecorder(Mic.stream); }catch(e){ ctl.done = true; resolve({error:mkErr("nomic")}); return; }
+    mr.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+    const start = Date.now(); let speaking = false, above = 0, below = 0, first = 0;
+    const tEl = $("stTimer"); if(tEl){ tEl.hidden = false; tEl.classList.remove("over"); }
+    const finish = reason => {
+      if(ctl.done) return; ctl.done = true; clearInterval(iv); if(pita) pita.level(0);
+      if(tEl) tEl.hidden = true;
+      const secs = (Date.now()-start)/1000;
+      mr.onstop = () => {
+        if(reason==="abort") return resolve(null);
+        if(reason==="pause") return resolve({paused:true});
+        if(reason==="skip") return resolve({skipped:true});
+        if(reason==="timeout") return resolve({timeout:true});
+        resolve({blob:new Blob(chunks, {type:mr.mimeType || "audio/webm"}), secs, spoke:speaking || secs>2, end: reason==="end"});
+      };
+      try{ mr.stop(); }catch(e){ resolve(null); }
+    };
+    ctl.finish = finish;
+    mr.start(250);
+    const iv = setInterval(() => {
+      const r = Mic.rms(); const thr = Math.max(0.012, Mic.noise*3.2);
+      if(pita) pita.level(Math.min(1, r/(thr*4)));
+      if(!speaking) Mic.noise = Mic.noise*0.96 + Math.min(r, 0.05)*0.04;
+      if(r > thr){ above += 50; below = 0; } else { below += 50; above = Math.max(0, above-25); }
+      if(!speaking && above >= 200){ speaking = true; first = Date.now(); const h = $("stHint"); if(h) h.textContent = o.handsFree ? "I'm listening… I'll notice when you stop." : "I'm listening… tap “I'm done talking” when you finish."; }
+      const el = (Date.now()-start)/1000;
+      if(tEl) tEl.textContent = mmss(el) + (o.maxSecs ? " / "+mmss(o.maxSecs) : "");
+      if(o.handsFree && speaking && below >= o.silenceMs && Date.now()-first > 900) finish("ok");
+      else if(o.maxSecs && el >= o.maxSecs) finish("ok");
+      else if(!speaking && el > (o.waitSecs || 25)) finish("timeout");
+    }, 50);
+  });
+}
+const setHTML = (id, h) => { const e = $(id); if(e) e.innerHTML = h; };
+const setText = (id, t) => { const e = $(id); if(e){ e.textContent = t; e.hidden = !t; } };
+function stage(title, label){
+  openRun(`<div class="section-head"><div><div class="label" id="stLabel">${esc(label||"")}</div><h2>${esc(title)}</h2></div><button class="btn ghost small" type="button" data-ia="close">Close</button></div>
+    <div class="stage"><div class="pita-wrap" id="pitaBox"></div><span class="timerpill" id="stTimer" hidden></span></div>
+    <div class="bubble tutor" id="sayT" hidden></div>
+    <div class="bubble you" id="sayY" hidden></div>
+    <div id="stExtra"></div>
+    <p class="small muted" id="stHint" style="text-align:center"></p>
+    <div class="btn-row" id="stCtrl"></div>`);
+  pita = mountPita($("pitaBox"), "happy");
+}
+function sayAloud(text, gender){
+  return new Promise(res => {
+    if(!text){ res(); return; }
+    if(!window.speechSynthesis || prefs().voice===false){ setTimeout(res, Math.min(6000, 900 + text.length*45)); return; }
+    stopSpeak();
+    const parts = (text.match(/[^.!?]+[.!?]*/g) || [text]).map(s => s.trim()).filter(Boolean);
+    let i = 0, done = false;
+    const end = () => { if(!done){ done = true; clearTimeout(safety); res(); } };
+    const safety = setTimeout(end, 5000 + text.length*110);
+    const next = () => { if(done) return; if(i>=parts.length || !run || run.aborted){ end(); return; } speak(parts[i++], gender, next); };
+    next();
+  });
+}
+async function tutorSays(text, mood){
+  if(!run || run.aborted) return;
+  if(pita){ pita.mood(validMood(mood)); pita.state("speak"); }
+  setText("sayT", text); setHTML("stCtrl", ""); setText("stHint", "");
+  await sayAloud(text, "female");
+  if(pita) pita.state("idle");
+}
+async function listenUI(o){
+  const handsFree = prefs().handsfree!==false;
+  for(;;){
+    if(!run || run.aborted) return null;
+    if(pita) pita.state("listen");
+    setText("stHint", handsFree ? "Your turn. Just start talking. I'll notice when you finish." : "Your turn. Tap “I'm done talking” when you finish.");
+    setHTML("stCtrl", `<button class="btn" type="button" data-ia="st-done">I'm done talking</button><button class="btn ghost" type="button" data-ia="st-pause">Pause</button>`
+      + (o.skip ? `<button class="btn ghost" type="button" data-ia="st-skip">Skip</button>` : "")
+      + (o.end ? `<button class="btn ghost" type="button" data-ia="st-end">Finish &amp; get my band</button>` : ""));
+    const r = await listen(Object.assign({handsFree}, o));
+    if(pita) pita.state("idle");
+    if(!r || !run || run.aborted) return null;
+    if(r.error){ setText("stHint", errMsg(r.error)); return null; }
+    if(r.paused || r.timeout){
+      if(pita) pita.mood(r.timeout ? "asking" : "normal");
+      setText("stHint", r.timeout ? "I didn't hear anything. Take your time." : "Paused.");
+      setHTML("stCtrl", `<button class="btn" type="button" data-ia="st-go">${r.timeout ? "I'm ready to answer" : "Continue"}</button>` + (o.skip ? `<button class="btn ghost" type="button" data-ia="st-skip">Skip</button>` : "") + (o.end ? `<button class="btn ghost" type="button" data-ia="st-end">Finish &amp; get my band</button>` : ""));
+      const v = await waitFor();
+      if(v==="abort") return null;
+      if(v==="skip") return {skipped:true};
+      if(v==="end") return {end:true};
+      continue;
+    }
+    return r;
+  }
+}
 
 /* ---------- SPEAKING ---------- */
-const MIC_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="#4B3742" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>`;
-const STOP_SVG = `<svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" fill="#4B3742"/></svg>`;
 function speakingMenu(){
   const pf = prefs();
   openRun(head("Speaking", "IELTS") + `
+    <button class="ptile" type="button" data-ia="sp-talk" style="--sc:${SK.speaking.color}"><b>Talk with Pita</b><span>A real conversation. Pita asks, listens, reacts and corrects you. Get your band when you finish.</span></button>
     <button class="ptile" type="button" data-ia="sp-mock" style="--sc:${SK.speaking.color}"><b>Full mock test</b><span>Part 1, 2 and 3, like the real test (about 12 minutes). Scored at the end.</span></button>
-    <div class="practice-grid">
-      <button class="ptile" type="button" data-ia="sp-quick" data-part="1" style="--sc:${SK.speaking.color}"><b>Part 1</b><span>One everyday question, instant feedback.</span></button>
-      <button class="ptile" type="button" data-ia="sp-quick" data-part="2" style="--sc:${SK.speaking.color}"><b>Part 2</b><span>Cue card: 1 min to prepare, 2 min to talk.</span></button>
-      <button class="ptile" type="button" data-ia="sp-quick" data-part="3" style="--sc:${SK.speaking.color}"><b>Part 3</b><span>One discussion question, instant feedback.</span></button>
+    <div class="practice-grid three">
+      <button class="ptile" type="button" data-ia="sp-quick" data-part="1" style="--sc:${SK.speaking.color}"><b>Part 1</b><span>One everyday question.</span></button>
+      <button class="ptile" type="button" data-ia="sp-quick" data-part="2" style="--sc:${SK.speaking.color}"><b>Part 2</b><span>Cue card: prepare 1 min, talk 2 min.</span></button>
+      <button class="ptile" type="button" data-ia="sp-quick" data-part="3" style="--sc:${SK.speaking.color}"><b>Part 3</b><span>One discussion question.</span></button>
     </div>
-    <label class="anchor" style="border:0;padding:0"><input type="checkbox" id="spVoice"${pf.voice!==false ? " checked" : ""}><span>Examiner reads the questions out loud</span></label>
-    <p class="muted small">Find a quiet place. The first time, your browser asks to use the microphone: tap Allow.</p>`);
+    <label class="anchor" style="border:0;padding:0"><input type="checkbox" id="spHands"${pf.handsfree!==false ? " checked" : ""}><span>Hands-free: Pita notices when you stop talking</span></label>
+    <label class="anchor" style="border:0;padding:0"><input type="checkbox" id="spVoice"${pf.voice!==false ? " checked" : ""}><span>Pita speaks out loud</span></label>
+    <p class="muted small">Find a quiet place. Earphones work best, so Pita doesn't hear her own voice. The first time, tap Allow for the microphone.</p>`);
 }
+function readSpeakPrefs(){ const v = $("spVoice"), h = $("spHands"); const patch = {}; if(v) patch.voice = v.checked; if(h) patch.handsfree = h.checked; if(Object.keys(patch).length) savePrefs(patch); }
 function avoidTopics(){ return sessions().filter(s => s.skill==="speaking").slice(-8).map(s => s.title).join("; "); }
+const cueHtml = c => `<div class="cue"><b>${esc(c.topic)}</b><p class="small" style="margin-top:6px">You should say:</p><ul class="small" style="margin:4px 0 6px;padding-left:1.2em">${c.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul><p class="small">${esc(c.final)}</p></div>`;
+const cueText = c => c.topic+". You should say: "+c.bullets.join("; ")+". "+c.final;
+async function prepTime(sec){
+  const t = $("stTimer"); if(t){ t.hidden = false; t.classList.remove("over"); }
+  setHTML("stCtrl", `<button class="btn" type="button" data-ia="st-go">I'm ready, start now</button>`);
+  setText("stHint", "Make notes in your head or on paper. Talking starts by itself when the minute is over.");
+  if(pita){ pita.mood("thinking"); pita.state("idle"); }
+  const endAt = Date.now() + sec*1000;
+  await new Promise(res => {
+    const iv = setInterval(() => { const left = Math.ceil((endAt-Date.now())/1000); if(t) t.textContent = mmss(Math.max(0,left)); if(left<=0 || !run || run.aborted){ clearInterval(iv); if(run) run.wake = null; res(); } }, 250);
+    run.wake = () => { clearInterval(iv); run.wake = null; res(); };
+  });
+  if(t) t.hidden = true;
+}
+async function askStep(st){
+  setText("sayY", "");
+  if(st.cue){
+    setHTML("stExtra", cueHtml(st.cue));
+    await tutorSays("Now I'm going to give you a topic, and I'd like you to talk about it for one to two minutes. You have one minute to think about what you're going to say. Your topic is: "+cueText(st.cue), "normal");
+    if(!run || run.aborted) return null;
+    await prepTime(60);
+    if(!run || run.aborted) return null;
+    await tutorSays("All right. Remember, you have one to two minutes. Please start speaking now.", "normal");
+    const a = await listenUI({silenceMs:5000, maxSecs:120, waitSecs:30, skip: run.kind==="mock"});
+    setHTML("stExtra", "");
+    return a;
+  }
+  await tutorSays(st.q, "asking");
+  if(!run || run.aborted) return null;
+  if(pita) pita.mood("normal");
+  return listenUI({silenceMs: st.part===3 ? 2300 : 1800, maxSecs: st.part===3 ? 90 : 60, skip: run.kind==="mock"});
+}
 async function spMock(){
-  wait("Speaking mock test", "Your examiner is preparing the questions…");
+  const micP = Mic.open(); unlockSpeech();
+  wait("Speaking mock test", "Pita is preparing your questions…");
   try{
     const sc = await ai(sys(), [{text:`Create a complete IELTS Speaking test. Return JSON:
 {"p1_topic": string, "p1": [4 short everyday Part 1 questions on that topic],
@@ -258,81 +429,134 @@ Use fresh, varied topics typical of recent IELTS tests. Avoid these recent topic
     const p1 = arr(sc.p1).map(str).filter(Boolean).slice(0,5), p3 = arr(sc.p3).map(str).filter(Boolean).slice(0,5);
     const p2 = sc.p2 || {};
     if(!p1.length || !p3.length || !p2.topic) throw mkErr("parse");
+    await micP;
     const steps = p1.map(q => ({part:1, q}))
       .concat([{part:2, cue:{topic:str(p2.topic), bullets:arr(p2.bullets).map(str), final:str(p2.final)}}])
       .concat(sc.p2_followup ? [{part:2, q:str(sc.p2_followup)}] : [])
       .concat(p3.map(q => ({part:3, q})));
     run = {mode:"sp", kind:"mock", script:sc, steps, i:0, answers:[], active:true};
-    spStep();
+    stage("Speaking mock test", "Part 1");
+    await tutorSays("Hello Azel, I'm Pita and I'll be your examiner today. In this first part, I'd like to ask you some questions about "+str(sc.p1_topic).toLowerCase()+".", "happy");
+    for(run.i=0; run.i<steps.length; run.i++){
+      if(!run || run.aborted) return;
+      const st = steps[run.i];
+      setText("stLabel", `Part ${st.part} · question ${run.i+1} of ${steps.length}`);
+      if(st.part===3 && steps[run.i-1] && steps[run.i-1].part!==3) await tutorSays("Thank you. We've been talking about "+str(p2.topic).replace(/^Describe\s+/i,"")+". Now I'd like to discuss some more general questions related to this.", "normal");
+      const ans = await askStep(st);
+      if(!run || run.aborted) return;
+      const a = {part:st.part, q: st.cue ? cueText(st.cue) : st.q, blob: ans && !ans.skipped && ans.spoke ? ans.blob : null, secs: ans && ans.secs ? ans.secs : 0};
+      a.p = transcribe(a); run.answers.push(a);
+    }
+    await tutorSays("Thank you, Azel. That's the end of the speaking test. Give me a moment to score it.", "happy");
+    spScoreMock();
   }catch(e){ fail("Speaking mock test", e, "sp-mock"); }
 }
 async function spQuick(part){
-  wait("Speaking Part "+part, "Your examiner is choosing a question…");
+  const micP = Mic.open(); unlockSpeech();
+  wait("Speaking Part "+part, "Pita is choosing a question…");
   try{
     const r = await ai(sys(), [{text: part==2
       ? `Give one IELTS Speaking Part 2 cue card. JSON {"topic":"Describe ...","bullets":[3 'You should say' points],"final":"and explain ..."}. Avoid: ${avoidTopics() || "none"}.`
       : `Give one IELTS Speaking Part ${part} question${part==3 ? " (abstract discussion)" : " (everyday, personal)"}. JSON {"topic": short topic name, "q": the question}. Avoid: ${avoidTopics() || "none"}.`}], {temp:1});
     const step = part==2 ? {part:2, cue:{topic:str(r.topic), bullets:arr(r.bullets).map(str), final:str(r.final)}} : {part, q:str(r.q), topic:str(r.topic)};
     if(part==2 ? !step.cue.topic : !step.q) throw mkErr("parse");
+    await micP;
     run = {mode:"sp", kind:"quick", part, steps:[step], i:0, answers:[], active:true};
-    spStep();
+    stage("Speaking Part "+part, "Quick practice");
+    const ans = await askStep(step);
+    if(!run || run.aborted) return;
+    if(!ans || ans.skipped){ closeRun(); return; }
+    run.answers.push({part, q: step.cue ? cueText(step.cue) : step.q, blob: ans.spoke ? ans.blob : null, secs: ans.secs || 0});
+    if(pita){ pita.mood("thinking"); pita.state("think"); }
+    spScoreQuick();
   }catch(e){ fail("Speaking Part "+part, e, "sp-quick-"+part); }
 }
-const cueHtml = c => `<div class="cue"><b>${esc(c.topic)}</b><p class="small" style="margin-top:6px">You should say:</p><ul class="small" style="margin:4px 0 6px;padding-left:1.2em">${c.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul><p class="small">${esc(c.final)}</p></div>`;
-const cueText = c => c.topic+". You should say: "+c.bullets.join("; ")+". "+c.final;
-function spStep(){
-  stopAll();
-  const st = run.steps[run.i]; const n = run.steps.length;
-  const voiceOn = prefs().voice!==false;
-  const label = run.kind==="mock" ? `Part ${st.part} · ${run.i+1} of ${n}` : `Part ${st.part}`;
-  if(st.cue){
-    run.phase = "prep"; run.prepEnd = Date.now()+60000;
-    openRun(head("Speaking", label) + cueHtml(st.cue) + `
-      <div class="section-head"><b>Preparation time</b><span class="timerpill" id="spT">01:00</span></div>
-      ${field("cueNotes","Notes (only you see them)",`<textarea id="cueNotes" placeholder="Write a few key words…"></textarea>`)}
-      <button class="btn" type="button" data-ia="sp-rec">I'm ready: start talking (2 min)</button>
-      <p class="muted small">Talking starts by itself when the minute is over.</p>`);
-    if(voiceOn) speak("Here is your topic. "+cueText(st.cue)+" You have one minute to prepare.");
-    tickStart(() => { const left = Math.ceil((run.prepEnd-Date.now())/1000); const t = $("spT"); if(t) t.textContent = mmss(Math.max(0,left)); if(left<=0 && run.phase==="prep"){ run.phase = "go"; spRecord(); } });
-    return;
+const TALK = ` You are "Pita", a cute animated IELTS speaking tutor with a pink ribbon, talking with Azel, an Indonesian economics student who wants band 9. Everything you write in "reply" is spoken aloud: keep it natural and short (under 45 words), no emojis, no lists, no markdown. Choose "mood" to match your reaction: happy for a good answer, love for an excellent answer or a sweet moment, surprised for something unexpected, confused when the answer is unclear, asking when your main point is a question, thinking when you consider an idea, sad if she gives up or is down, strict when the answer is lazy, too short or off-topic, angry only for the same careless mistake made again and again (firm, never insulting), normal otherwise. If she answers in Indonesian, reply in English and ask her to try again in English.`;
+const histText = () => run.history.slice(-14).map(h => (h.who==="tutor" ? "Pita: " : "Azel: ")+h.text).join("\n");
+async function spTalk(){
+  const micP = Mic.open(); unlockSpeech();
+  run = {mode:"sp", kind:"talk", history:[], fixes:[], answers:[], active:true};
+  stage("Talk with Pita", "Speaking practice");
+  if(pita){ pita.mood("thinking"); pita.state("think"); }
+  setText("stHint", "Pita is getting ready…");
+  let r;
+  try{
+    r = await ai(sys()+TALK, [{text:`Start the conversation. Greet Azel warmly in one short sentence, tell her you'll chat like the IELTS Speaking test, then ask the first easy Part 1 question on a fresh everyday topic (avoid: ${avoidTopics() || "none"}). JSON {"reply": string, "mood": one of ${MOODLIST}}`}], {temp:0.9});
+    await micP;
+  }catch(e){ fail("Talk with Pita", e, "sp-talk"); return; }
+  talkLoop(r);
+}
+async function talkLoop(r){
+  for(;;){
+    if(!run || run.aborted) return;
+    const reply = str(r.reply).trim() || "Tell me a little more about that.";
+    run.history.push({who:"tutor", text:reply});
+    await tutorSays(reply, r.mood);
+    if(!run || run.aborted) return;
+    const ans = await listenUI({silenceMs:1700, maxSecs:90, end:true});
+    if(!run || run.aborted || !ans) return;
+    if(ans.end && !(ans.blob && ans.spoke)){ talkFinish(); return; }
+    if(ans.skipped || !ans.blob || !ans.spoke){ r = {reply:"No problem. Take your time. "+reply, mood:"normal"}; run.history.pop(); continue; }
+    if(pita){ pita.mood("thinking"); pita.state("think"); }
+    setText("stHint", "Pita is thinking…"); setHTML("stCtrl", "");
+    try{
+      const part = await audioPart(ans.blob);
+      r = await ai(sys()+TALK, [{text:`Conversation so far:
+${histText()}
+
+Azel's new answer is in the audio. 1) Transcribe it exactly, keeping fillers and mistakes. 2) Write Pita's next turn: react naturally to what she said in one or two short sentences; if there is a clear grammar or vocabulary mistake, correct only the most useful one, briefly; then ask the next question (a follow-up, or move on like Parts 1, 2 and 3, and now and then give a Part 2 style "describe..." topic for a longer answer). 3) Pick Pita's face mood.
+JSON {"transcript": string, "reply": string, "mood": one of ${MOODLIST}, "fix": {"original": string, "better": string} or null, "pron": "one short pronunciation note, or empty"}`}, part], {temp:0.8});
+    }catch(e){
+      if(["nokey","badkey","rate","network"].includes(e.code)){
+        if(pita){ pita.mood("sad"); pita.state("idle"); }
+        setText("stHint", errMsg(e));
+        const can = run.answers.length >= 2;
+        setHTML("stCtrl", (can ? `<button class="btn" type="button" data-ia="st-end">Finish &amp; get my band</button>` : "") + `<button class="btn ghost" type="button" data-ia="st-go">Try again</button>`);
+        const v = await waitFor();
+        if(v==="abort") return;
+        if(v==="end"){ talkFinish(); return; }
+        r = {reply:"Sorry, I missed that. Could you say it again?", mood:"confused"}; run.history.pop(); continue;
+      }
+      r = {reply:"Sorry, I didn't quite catch that. Could you say it again?", mood:"confused"}; run.history.pop(); continue;
+    }
+    const tr = str(r.transcript).trim();
+    if(tr){
+      run.history.push({who:"student", text:tr, pron:str(r.pron)});
+      run.answers.push({q:reply, transcript:tr, pron:str(r.pron), secs:Math.round(ans.secs || 0)});
+      setText("sayY", "You: "+tr);
+    }
+    if(r.fix && r.fix.original && r.fix.better){
+      run.fixes.push({original:str(r.fix.original), better:str(r.fix.better)});
+      setHTML("stExtra", `<div class="fix"><span class="o">${esc(r.fix.original)}</span><span class="b">→ ${esc(r.fix.better)}</span></div>`);
+    } else setHTML("stExtra", "");
+    if(ans.end){ talkFinish(); return; }
   }
-  run.phase = "ask";
-  openRun(head("Speaking", label) + `
-    <div class="card"><p class="qbig">${esc(st.q)}</p><div style="text-align:center"><button class="linkbtn" type="button" data-ia="sp-hear">Hear it again</button></div></div>
-    <button class="mic" type="button" data-ia="sp-rec" aria-label="Start answering">${MIC_SVG}</button>
-    <p style="text-align:center" class="muted" id="spState">Tap the microphone and answer out loud.</p>
-    ${run.kind==="mock" ? `<div style="text-align:center"><button class="linkbtn" type="button" data-ia="sp-skip">Skip this question</button></div>` : ""}`);
-  if(voiceOn) setTimeout(() => speak(st.q), 150);
 }
-async function spRecord(){
-  const st = run.steps[run.i];
-  stopSpeak();
-  try{ await startRec(); }catch(e){ toast(errMsg(e)); if(st.cue){ run.phase = "prep"; run.prepEnd = Date.now()+5000; } return; }
-  run.phase = "rec";
-  const max = st.cue ? 120 : st.part===3 ? 90 : st.part===2 ? 45 : 60;
-  openRun(head("Speaking", (st.cue ? "Part 2 · talk for 1–2 minutes" : "Part "+st.part+" · recording")) + (st.cue ? cueHtml(st.cue) + (run.notes ? `<p class="small muted">Your notes: ${esc(run.notes)}</p>` : "") : `<div class="card"><p class="qbig">${esc(st.q)}</p></div>`) + `
-    <button class="mic rec" type="button" data-ia="sp-stop" aria-label="Stop recording">${STOP_SVG}</button>
-    <p style="text-align:center"><b class="timerpill" id="spT">00:00</b></p>
-    <p style="text-align:center" class="muted">Recording… tap the square when you finish.${st.cue ? " Try to keep talking until about 2:00." : ""}</p>`);
-  tickStart(() => { if(!rec) return; const s = (Date.now()-rec.start)/1000; const t = $("spT"); if(t) t.textContent = mmss(s)+" / "+mmss(max); if(s>=max) spStop(); });
-}
-async function spStop(){
-  if(!run || run.phase!=="rec") return;
-  run.phase = "saving";
-  const notesEl = $("cueNotes"); if(notesEl) run.notes = notesEl.value;
-  const r = await stopRec();
-  if(run.tick){ clearInterval(run.tick); run.tick = null; }
-  const st = run.steps[run.i];
-  const ans = {part:st.part, q: st.cue ? cueText(st.cue) : st.q, blob: r && r.blob, secs: r ? r.secs : 0};
-  run.answers.push(ans);
-  if(run.kind==="mock") ans.p = transcribe(ans);
-  spNext();
-}
-function spSkip(){ const st = run.steps[run.i]; const ans = {part:st.part, q: st.cue ? cueText(st.cue) : st.q, blob:null, secs:0}; ans.p = Promise.resolve({transcript:"", pron:[], pron_overall:"No answer given."}); run.answers.push(ans); spNext(); }
-function spNext(){
-  run.i++;
-  if(run.i < run.steps.length){ run.notes = ""; spStep(); return; }
-  if(run.kind==="mock") spScoreMock(); else spScoreQuick();
+async function talkFinish(){
+  if(!run) return;
+  if(run.answers.length < 2){
+    if(pita) pita.mood("asking");
+    setText("stHint", "Answer at least 2 questions first, so Pita can give you a fair band.");
+    setHTML("stCtrl", `<button class="btn" type="button" data-ia="st-go">Keep talking</button>`);
+    const v = await waitFor(); if(v==="abort") return;
+    let last = "Let's keep going. Tell me about your favourite place to relax.";
+    for(let i=run.history.length-1;i>=0;i--){ if(run.history[i].who==="tutor"){ last = run.history[i].text; run.history.splice(i,1); break; } }
+    return talkLoop({reply:last, mood:"normal"});
+  }
+  run.active = true; Mic.close();
+  wait("Talk with Pita", "Pita is scoring your speaking… This can take up to a minute.");
+  try{
+    const text = run.answers.map((a,i) => `Question ${i+1}: ${a.q}\nAzel (${a.secs}s): ${a.transcript}\nPronunciation note: ${a.pron || "-"}`).join("\n\n");
+    const rep = await ai(sys(), [{text:`Assess this IELTS Speaking practice conversation as if it were a speaking test. Below are the tutor's questions, Azel's exact transcripts and pronunciation notes from the audio.
+Short answers must lower Fluency and Coherence. overall = the mean of the four criteria, rounded to the nearest 0.5.
+${text}
+
+Return JSON ${SPEAK_SHAPE}`}], {temp:0.3});
+    if(run.fixes.length) rep.fixes = run.fixes.concat(arr(rep.fixes)).slice(0, 10);
+    saveSession({skill:"speaking", kind:"talk", title:"Talk with Pita ("+run.answers.length+" answers)", report:rep,
+      band:clampBand(rep.overall), sub:{fc:clampBand((rep.fc||{}).band), lr:clampBand((rep.lr||{}).band), gra:clampBand((rep.gra||{}).band), p:clampBand((rep.p||{}).band)},
+      items: run.answers.map(a => ({part:0, q:a.q, transcript:a.transcript, secs:a.secs}))});
+  }catch(e){ fail("Talk with Pita", e, "talk-rescore"); }
 }
 async function transcribe(ans, tries){
   if(!ans.blob || ans.secs < 1) return {transcript:"", pron:[], pron_overall:"No answer recorded."};
@@ -343,7 +567,7 @@ Transcribe the candidate's spoken answer exactly as said, keeping fillers (um, u
 Then list up to 4 specific pronunciation problems (word: what was wrong) and one sentence about clarity, stress, intonation and pace.
 JSON {"transcript": string, "pron": [string], "pron_overall": string}`}, part], {temp:0.1});
   }catch(e){
-    if((tries||0) < 1 && e.code!=="nokey" && e.code!=="badkey") { await new Promise(r => setTimeout(r, 3000)); return transcribe(ans, (tries||0)+1); }
+    if((tries||0) < 1 && e.code!=="nokey" && e.code!=="badkey") { await sleep(3000); return transcribe(ans, (tries||0)+1); }
     throw e;
   }
 }
@@ -354,8 +578,8 @@ const SPEAK_SHAPE = `{"overall": number, "fc": {"band": number, "comment": strin
  "model_answer": {"question": string, "answer": "a natural band 9 answer"},
  "tips_id": "3 concrete practice tips in Bahasa Indonesia"}`;
 async function spScoreMock(){
-  run.active = true;
-  wait("Speaking mock test", "Listening to your answers and scoring your test… This can take up to a minute.");
+  run.active = true; Mic.close();
+  wait("Speaking mock test", "Pita is listening to your answers and scoring your test… This can take up to a minute.");
   let items;
   try{
     items = await Promise.all(run.answers.map(a => a.p.then(r => r, e => ({error:e}))));
@@ -376,7 +600,8 @@ Return JSON ${SPEAK_SHAPE}`}], {temp:0.3});
   }catch(e){ fail("Speaking mock test", e, "sp-rescore"); }
 }
 async function spScoreQuick(){
-  wait("Speaking Part "+run.part, "Listening to your answer…");
+  Mic.close();
+  wait("Speaking Part "+run.part, "Pita is listening to your answer…");
   const a = run.answers[0];
   try{
     if(!a.blob || a.secs < 1) throw mkErr("empty");
@@ -600,6 +825,7 @@ function showReport(id, fresh){
   run = {mode:"report", sid:id};
   const r = s.report || {};
   let h = head(s.title || "Practice", (SK[s.skill] ? SK[s.skill].name : "IELTS")+" · "+fmtD(s.date || today()));
+  h += `<div class="pita-wrap small-pita" id="repPita"></div>`;
   h += `<div class="bandbig" style="align-items:center;text-align:center"><span class="label">${s.raw!=null ? `Score ${s.raw} / ${s.total}${s.scaled!=null && s.total!==40 ? " (≈ "+s.scaled+"/40)" : ""}` : "Band"}</span><b>${fmtBand(s.band)}</b>
     ${fresh && typeof s.band==="number" ? `<span class="small muted">${s.band >= (+prefs().target||9) ? "On target. Keep it there." : "Target "+fmtBand(+prefs().target||9)+" · gap "+fmtBand((+prefs().target||9)-s.band)}</span>` : ""}</div>`;
   if(CRIT[s.skill]){
@@ -622,6 +848,10 @@ function showReport(id, fresh){
   if(s.kind==="manual") h += `<div class="card"><p>${esc(s.source || "Logged score")}</p>${s.raw!=null ? `<p class="small muted">${s.raw} / 40 correct</p>` : ""}</div>`;
   h += `<div class="btn-row"><button class="btn" type="button" data-ia="close">Done</button><button class="btn ghost" type="button" data-ia="delsess" data-id="${esc(id)}">Delete this record</button></div>`;
   openRun(h);
+  Mic.close();
+  const tg = +prefs().target || 9, gap = typeof s.band==="number" ? tg - s.band : null;
+  const mood = gap==null ? "normal" : gap<=0 ? "love" : gap<=1 ? "happy" : gap<=2 ? "normal" : prefs().style==="friendly" ? "sad" : "strict";
+  mountPita($("repPita"), mood);
 }
 function addVocab(i){
   const s = byId("ielts", run && run.sid); if(!s) return;
@@ -709,7 +939,7 @@ document.addEventListener("click", e => {
   const a = el.dataset.ia;
   switch(a){
     case "close":
-      if(run && run.active && run.mode!=="report"){ twoTap(el, "Tap again to leave", () => closeRun()); }
+      if(run && run.active && run.mode!=="report" && !(run.mode==="sp" && run.kind==="quick")){ twoTap(el, "Tap again to leave", () => closeRun()); }
       else closeRun();
       break;
     case "settings": settingsForm(false); break;
@@ -726,13 +956,16 @@ document.addEventListener("click", e => {
     case "go-writing": writingMenu(); break;
     case "go-reading": rdNew(); break;
     case "go-listening": listeningMenu(); break;
-    case "sp-mock": { const v = $("spVoice"); if(v) savePrefs({voice:v.checked}); spMock(); break; }
-    case "sp-quick": { const v = $("spVoice"); if(v) savePrefs({voice:v.checked}); spQuick(+el.dataset.part); break; }
+    case "sp-talk": readSpeakPrefs(); spTalk(); break;
+    case "sp-mock": readSpeakPrefs(); spMock(); break;
+    case "sp-quick": readSpeakPrefs(); spQuick(+el.dataset.part); break;
     case "sp-quick-1": case "sp-quick-2": case "sp-quick-3": spQuick(+a.slice(-1)); break;
-    case "sp-hear": { const st = run && run.steps && run.steps[run.i]; if(st) speak(st.q || cueText(st.cue)); break; }
-    case "sp-rec": if(run && (run.phase==="ask" || run.phase==="prep")){ const n = $("cueNotes"); if(n) run.notes = n.value; run.phase = "go"; spRecord(); } break;
-    case "sp-stop": spStop(); break;
-    case "sp-skip": spSkip(); break;
+    case "st-done": if(run && run.ctl && !run.ctl.done) run.ctl.finish("ok"); break;
+    case "st-pause": if(run && run.ctl && !run.ctl.done) run.ctl.finish("pause"); break;
+    case "st-skip": if(run && run.ctl && !run.ctl.done) run.ctl.finish("skip"); else if(run && run.wake) run.wake("skip"); break;
+    case "st-end": if(run && run.ctl && !run.ctl.done) run.ctl.finish("end"); else if(run && run.wake) run.wake("end"); break;
+    case "st-go": if(run && run.wake) run.wake("go"); break;
+    case "talk-rescore": talkFinish(); break;
     case "sp-rescore": if(run && run.answers && run.answers.length){ if(run.kind==="mock"){ run.answers.forEach(x => { x.p = transcribe(x); }); spScoreMock(); } else spScoreQuick(); } else speakingMenu(); break;
     case "wr-new": wrNew(+el.dataset.task); break;
     case "wr-new-1": wrNew(1); break;
