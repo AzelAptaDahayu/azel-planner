@@ -1,6 +1,6 @@
 # Azel's Study Planner
 
-A pastel study planner that works on laptop, phone and iPad: timetable with schedule changes and free-time ideas, to-do list, course folders with flashcards, calendar, focus timer, and money pockets.
+A pastel study planner that works on laptop, phone and iPad: timetable with schedule changes and free-time ideas, to-do list, course folders with flashcards, calendar, IELTS practice with Pita (an AI tutor), vocabulary cards and review, chess against Pita, focus timer, and money pockets.
 
 ## Using it
 
@@ -25,7 +25,11 @@ Open your private planner link once on each device. Or, on a device that already
 | File | What it is |
 | --- | --- |
 | `index.html` | The whole app |
-| `manifest.webmanifest`, `icons/` | Home-screen name and icon |
+| `manifest.webmanifest`, `*.png` | Home-screen name and icons |
 | `sw.js` | Lets the app open without internet |
+| `ielts.js`, `pita.js` | IELTS menu and Pita, the animated tutor |
+| `vocab.js` | Vocabulary menu (word cards, review, "Say it better") |
+| `pitachess.js` | Chess against Pita |
+| `chesslib.js` | Chess rules ([chess.js](https://github.com/jhlywa/chess.js), BSD-2-Clause) |
 | `qrcode.js` | QR code for connecting another device ([qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator), MIT) |
 | `firestore.rules` | Firebase security rules (paste into Firestore → Rules) |

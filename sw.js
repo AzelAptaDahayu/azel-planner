@@ -1,6 +1,6 @@
 // Offline support: keeps the app itself on the device so it opens without internet.
 // Your planner data is kept offline separately by Firebase.
-const VERSION = "azel-planner-v9";
+const VERSION = "azel-planner-v10";
 const SHELL = [
   "./",
   "./index.html",
@@ -8,6 +8,9 @@ const SHELL = [
   "./qrcode.js",
   "./pita.js",
   "./ielts.js",
+  "./chesslib.js",
+  "./vocab.js",
+  "./pitachess.js",
   "./icon-192.png",
   "./icon-512.png",
   "./apple-touch-icon.png"

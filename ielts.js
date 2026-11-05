@@ -275,39 +275,62 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const waitFor = () => new Promise(res => { run.wake = v => { run.wake = null; res(v); }; });
 
 /* ---------- microphone with voice detection ---------- */
-const Mic = {stream:null, ctx:null, an:null, buf:null, bbuf:null, noise:0.008,
+const Mic = {stream:null, ctx:null, an:null, src:null, sink:null, buf:null, bbuf:null, noise:0.008,
+  live(){ return !!(this.stream && this.stream.active && this.stream.getAudioTracks().some(t => t.readyState==="live")); },
   async open(){
     if(!navigator.mediaDevices || !window.MediaRecorder) throw mkErr("nomic");
     const AC = window.AudioContext || window.webkitAudioContext;
-    if(!this.ctx && AC){ try{ this.ctx = new AC(); }catch(e){} }
+    // create/resume the audio context while we are still inside the tap (iPad needs this)
+    if((!this.ctx || this.ctx.state==="closed") && AC){ try{ this.ctx = new AC(); }catch(e){ this.ctx = null; } }
     if(this.ctx){ try{ this.ctx.resume(); }catch(e){} }
-    if(this.stream && this.stream.active) return;
-    try{ this.stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}}); }
-    catch(e){ throw mkErr("mic"); }
-    if(this.ctx){
-      try{ await this.ctx.resume(); }catch(e){}
-      const src = this.ctx.createMediaStreamSource(this.stream);
-      this.an = this.ctx.createAnalyser(); this.an.fftSize = 1024; src.connect(this.an);
-      this.buf = new Float32Array(this.an.fftSize); this.bbuf = new Uint8Array(this.an.fftSize);
+    if(!this.live()){
+      try{ this.stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}}); }
+      catch(e){ throw mkErr("mic"); }
     }
+    await this.ensure();
+  },
+  // reconnect the level meter to the mic; on iPad the audio can go quiet after Pita speaks
+  wire(){
+    if(!this.ctx || !this.stream) return;
+    try{ if(this.src) this.src.disconnect(); }catch(e){}
+    try{ if(this.sink) this.sink.disconnect(); }catch(e){}
+    try{
+      this.src = this.ctx.createMediaStreamSource(this.stream);
+      this.an = this.ctx.createAnalyser(); this.an.fftSize = 1024; this.src.connect(this.an);
+      // Safari only measures audio that flows to the speakers, so send it there at zero volume
+      this.sink = this.ctx.createGain(); this.sink.gain.value = 0; this.an.connect(this.sink); this.sink.connect(this.ctx.destination);
+      this.buf = new Float32Array(this.an.fftSize); this.bbuf = new Uint8Array(this.an.fftSize);
+    }catch(e){ this.an = null; }
+  },
+  async ensure(rebuild){
+    if(!this.live()){ try{ this.stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}}); }catch(e){ return; } rebuild = true; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(rebuild && this.ctx){ try{ this.ctx.close(); }catch(e){} this.ctx = null; }
+    if(!this.ctx && AC){ try{ this.ctx = new AC(); }catch(e){ return; } rebuild = true; }
+    if(this.ctx && this.ctx.state!=="running"){ try{ await Promise.race([this.ctx.resume(), sleep(400)]); }catch(e){} }
+    this.wire();
   },
   rms(){
-    if(!this.an) return 0;
+    if(!this.an) return -1;
     let s = 0;
     if(this.an.getFloatTimeDomainData){ this.an.getFloatTimeDomainData(this.buf); for(let i=0;i<this.buf.length;i++) s += this.buf[i]*this.buf[i]; return Math.sqrt(s/this.buf.length); }
     this.an.getByteTimeDomainData(this.bbuf); for(let i=0;i<this.bbuf.length;i++){ const v = (this.bbuf[i]-128)/128; s += v*v; } return Math.sqrt(s/this.bbuf.length);
   },
-  close(){ if(this.stream) this.stream.getTracks().forEach(t => t.stop()); this.stream = null; this.an = null; if(this.ctx){ try{ this.ctx.close(); }catch(e){} } this.ctx = null; }
+  close(){ if(this.stream) this.stream.getTracks().forEach(t => t.stop()); this.stream = null; this.an = null; this.src = null; this.sink = null; if(this.ctx){ try{ this.ctx.close(); }catch(e){} } this.ctx = null; }
 };
+// any tap wakes the audio up again if the iPad paused it
+["pointerdown","touchend","keydown"].forEach(ev => document.addEventListener(ev, () => { if(Mic.ctx && Mic.ctx.state!=="running"){ try{ Mic.ctx.resume(); }catch(e){} } }, {passive:true, capture:true}));
 function unlockSpeech(){ try{ if(window.speechSynthesis){ const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } }catch(e){} }
 /* Records one answer. Stops by itself after a pause in speech (hands-free), or when a button finishes it. */
-function listen(o){
+async function listen(o){
+  await Mic.ensure();
+  if(!run || run.aborted) return null;
   return new Promise(resolve => {
     const ctl = run.ctl = {done:false};
     let mr; const chunks = [];
     try{ mr = new MediaRecorder(Mic.stream); }catch(e){ ctl.done = true; resolve({error:mkErr("nomic")}); return; }
     mr.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
-    const start = Date.now(); let speaking = false, above = 0, below = 0, first = 0, hinted = false;
+    const start = Date.now(); let speaking = false, above = 0, below = 0, first = 0, hinted = false, flat = 0, fixes = 0, deaf = false;
     const tEl = $("stTimer"); if(tEl){ tEl.hidden = false; tEl.classList.remove("over"); }
     const finish = reason => {
       if(ctl.done) return; ctl.done = true; clearInterval(iv); if(pita) pita.level(0);
@@ -325,7 +348,16 @@ function listen(o){
     ctl.finish = finish;
     mr.start(250);
     const iv = setInterval(() => {
-      const r = Mic.rms(); const thr = Math.max(0.012, Mic.noise*3.2);
+      let r = Mic.rms(); const thr = Math.max(0.012, Mic.noise*3.2);
+      // a real mic is never perfectly silent; exact zeros mean the level meter stopped
+      if(!deaf && r < 1e-7){ flat += 50;
+        if(flat >= 1200){ flat = 0; fixes++;
+          if(fixes <= 2){ if(Mic.ctx && Mic.ctx.state!=="running"){ try{ Mic.ctx.resume(); }catch(e){} } Mic.wire(); }
+          else { deaf = true; const hh = $("stHint"); if(hh) hh.textContent = "I'm recording, but I can't see your voice level on this device. Just talk, then tap “I'm done talking”."; }
+        }
+      } else if(r > 1e-7) flat = 0;
+      if(deaf){ if(pita) pita.level(0.25 + 0.2*Math.sin(Date.now()/180)); const el2 = (Date.now()-start)/1000; if(tEl) tEl.textContent = mmss(el2) + (o.maxSecs ? " / "+mmss(o.maxSecs) : ""); if(o.maxSecs && el2 >= o.maxSecs) finish("ok"); return; }
+      r = Math.max(0, r);
       if(pita) pita.level(Math.min(1, r/(thr*4)));
       if(!speaking) Mic.noise = Mic.noise*0.96 + Math.min(r, 0.05)*0.04;
       if(r > thr){ above += 50; below = 0; } else { below += 50; above = Math.max(0, above-25); }
@@ -422,6 +454,9 @@ function speakingMenu(){
     <div class="field"><label for="spVoiceName">Pita's voice</label>
       <div style="display:flex;gap:8px"><select id="spVoiceName" style="flex:1;min-width:0">${voiceOptions(pf.voiceName)}</select><button class="btn ghost small" type="button" data-ia="sp-hear">Hear Pita</button></div>
       <p class="muted small" style="margin-top:6px">${voiceTip()}</p></div>
+    <div class="field"><label>Mic check</label>
+      <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost small" type="button" data-ia="sp-mictest">Test my mic</button><div class="micmeter"><i id="micBar"></i></div></div>
+      <p class="muted small" id="micMsg" style="margin-top:6px">Tap, then say something. The bar should move.</p></div>
     <p class="muted small">Find a quiet place. Earphones work best, so Pita doesn't hear her own voice. The first time, tap Allow for the microphone.</p>`);
 }
 function voiceOptions(sel){
@@ -434,6 +469,25 @@ function voiceTip(){
   if(/iPhone|iPad|Macintosh/i.test(ua) && "ontouchend" in document) return "For a nicer voice: iPhone/iPad Settings → Accessibility → Spoken Content → Voices → English, download a voice marked Enhanced or Premium, then pick it here. ★ = natural voice.";
   if(/Edg\//.test(ua)) return "★ = natural voice. The “Natural” voices in Edge sound the most human.";
   return "★ = natural voice. On a laptop, Microsoft Edge has free “Natural” voices that sound much more human.";
+}
+let micTest = 0;
+async function testMic(){
+  clearInterval(micTest);
+  const msg = $("micMsg"), bar = $("micBar");
+  try{ await Mic.open(); }catch(e){ if(msg) msg.textContent = errMsg(e); return; }
+  if(msg) msg.textContent = "Listening… say “Hello Pita”.";
+  let peak = 0, zeros = 0, n = 0;
+  micTest = setInterval(() => {
+    const r = Mic.rms(); n++;
+    if(r < 1e-7) zeros++; else peak = Math.max(peak, r);
+    if(bar) bar.style.width = Math.min(100, Math.max(0, r)*900)+"%";
+    if(!$("micBar") || n > 120){
+      clearInterval(micTest); if(bar) bar.style.width = "0";
+      if(!run) Mic.close();
+      if(!msg || !$("micMsg")) return;
+      msg.textContent = peak > 0.02 ? "Your mic works ✓ Pita can hear you." : zeros > 100 ? "Pita gets no sound level here. Speaking still records: just tap “I'm done talking” when you finish. If it keeps happening, close the app fully and open it again." : "Very quiet. Speak a bit louder or closer to the iPad.";
+    }
+  }, 50);
 }
 function readSpeakPrefs(){ const v = $("spVoice"), h = $("spHands"), vn = $("spVoiceName"); const patch = {}; if(vn) patch.voiceName = vn.value; if(v) patch.voice = v.checked; if(h) patch.handsfree = h.checked; if(Object.keys(patch).length) savePrefs(patch); }
 function avoidTopics(){ return sessions().filter(s => s.skill==="speaking").slice(-8).map(s => s.title).join("; "); }
@@ -916,7 +970,8 @@ function addVocab(i){
     if(arr(set.cards).some(c => str(c.f).toLowerCase()===front.toLowerCase())){ toast("Already in your IELTS flashcards."); return; }
     set = Object.assign({}, set, {cards:arr(set.cards).concat([card])}); delete set.updatedAt;
   } else set = {course:"ielts", title:"IELTS vocabulary", cards:[card], createdAt:Date.now()};
-  put("sets", set); toast("Added to your IELTS flashcards.");
+  put("sets", set); toast("Added to your IELTS flashcards and My words.");
+  if(window.__vocabAdd) window.__vocabAdd(front, {meaning:str(v.meaning), example:str(v.example)});
 }
 
 /* ---------- manual log + settings ---------- */
@@ -1011,6 +1066,7 @@ document.addEventListener("click", e => {
     case "go-listening": listeningMenu(); break;
     case "sp-talk": readSpeakPrefs(); spTalk(); break;
     case "sp-pause": { savePrefs({pauseSecs:+el.dataset.v}); el.parentNode.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b===el))); break; }
+    case "sp-mictest": testMic(); break;
     case "sp-hear": { const vn = $("spVoiceName"); if(vn) savePrefs({voiceName: vn.value}); stopSpeak(); speak("Hi Azel! I'm Pita. Shall we practise some speaking together?", "female"); break; }
     case "sp-mock": readSpeakPrefs(); spMock(); break;
     case "sp-quick": readSpeakPrefs(); spQuick(+el.dataset.part); break;
@@ -1049,6 +1105,7 @@ document.addEventListener("change", e => { if(["cW","cS"].includes(e.target.id))
 document.addEventListener("keydown", e => { if(e.key==="Escape" && !$("ieltsRun").hidden && !(run && run.active && run.mode!=="report")) closeRun(); });
 
 window.__ieltsRender = render;
+window.__ielts = {ai, prefs, errMsg, mkErr, speak, stopSpeak, voiceScore, openSettings: k => settingsForm(k), sessions};
 try{ calc(); }catch(e){}
 render();
 })();
