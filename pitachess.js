@@ -133,9 +133,10 @@ function drawBoard(){
     const ff = flip ? 7-f : f, rr = flip ? 7-r : r;
     const name = "abcdefgh"[ff] + (8-rr);
     const dark = (ff + rr) % 2 === 1;
-    sq += `<button type="button" class="cq ${dark ? "dk" : "lt"}" data-ch="sq" data-sq="${name}" aria-label="${name}">${f===0 ? `<i class="rk">${8-rr}</i>` : ""}${r===7 ? `<i class="fl">${"abcdefgh"[ff]}</i>` : ""}</button>`;
+    sq += `<div class="cq ${dark ? "dk" : "lt"}" data-sq="${name}"><span class="mk"></span>${f===0 ? `<i class="rk">${8-rr}</i>` : ""}${r===7 ? `<i class="fl">${"abcdefgh"[ff]}</i>` : ""}</div>`;
   }
   box.innerHTML = `<div class="cgrid">${sq}</div><div class="clayer" id="chLayer"></div>`;
+  if(!box.dataset.wired){ box.dataset.wired = "1"; wireBoard(box); }
   drawPieces();
 }
 function drawPieces(){
@@ -151,14 +152,14 @@ function drawPieces(){
 function marks(){
   document.querySelectorAll("#chBoard .cq").forEach(b => {
     const s = b.dataset.sq;
-    b.classList.toggle("sel", sel===s);
-    b.classList.toggle("last", !!lastMv && (lastMv.from===s || lastMv.to===s));
-    b.classList.toggle("hint", !!hintMv && (hintMv.from===s || hintMv.to===s));
+    b.classList.toggle("q-sel", sel===s);
+    b.classList.toggle("q-last", !!lastMv && (lastMv.from===s || lastMv.to===s));
+    b.classList.toggle("q-hint", !!hintMv && (hintMv.from===s || hintMv.to===s));
     const t = legal.find(m => m.to===s);
-    b.classList.toggle("dot", !!t && !t.captured);
-    b.classList.toggle("cap", !!t && !!t.captured);
+    b.classList.toggle("q-dot", !!t && !t.captured);
+    b.classList.toggle("q-cap", !!t && !!t.captured);
     const pc = g.get(s);
-    b.classList.toggle("chk", !!pc && pc.type==="k" && pc.color===g.turn() && g.inCheck());
+    b.classList.toggle("q-chk", !!pc && pc.type==="k" && pc.color===g.turn() && g.inCheck());
   });
 }
 function animateMove(m){
@@ -253,6 +254,50 @@ function pitaTurn(){
     }, wait);
   }, 420);
 }
+// Taps and drags are read from the finger position on the board, so they work the same on iPad, phone and laptop.
+function squareAt(box, x, y){
+  const r = box.getBoundingClientRect();
+  let f = Math.floor((x - r.left) / r.width * 8), k = Math.floor((y - r.top) / r.height * 8);
+  if(f < 0 || f > 7 || k < 0 || k > 7) return null;
+  if(flip){ f = 7-f; k = 7-k; }
+  return "abcdefgh"[f] + (8-k);
+}
+function wireBoard(box){
+  let down = null, drag = null;
+  box.addEventListener("pointerdown", e => {
+    if(e.button > 0) return;
+    const s = squareAt(box, e.clientX, e.clientY); if(!s) return;
+    e.preventDefault();
+    down = {s, x:e.clientX, y:e.clientY, moved:false};
+    const before = sel;
+    tapSquare(s);
+    // start a drag if this tap picked up one of your pieces
+    if(sel===s && els[s]){ drag = {el:els[s], s}; try{ box.setPointerCapture(e.pointerId); }catch(err){} }
+    else drag = null;
+    down.before = before;
+  });
+  box.addEventListener("pointermove", e => {
+    if(!down || !drag) return;
+    const dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if(!down.moved && Math.hypot(dx, dy) < 8) return;
+    down.moved = true;
+    const r = box.getBoundingClientRect(), cell = r.width/8;
+    drag.el.classList.add("dragging");
+    drag.el.style.transform = `translate(${e.clientX - r.left - cell/2}px, ${e.clientY - r.top - cell*0.65}px) scale(1.15)`;
+  });
+  const up = e => {
+    if(!down) return;
+    const d = down, dr = drag; down = null; drag = null;
+    if(dr){ dr.el.classList.remove("dragging"); }
+    if(d.moved && dr){
+      const s = squareAt(box, e.clientX, e.clientY);
+      if(s && s!==dr.s && legal.some(m => m.to===s)){ tapSquare(s); return; }
+      placeEl(dr.el, dr.s);
+    }
+  };
+  box.addEventListener("pointerup", up);
+  box.addEventListener("pointercancel", e => { if(drag){ drag.el.classList.remove("dragging"); placeEl(drag.el, drag.s); } down = null; drag = null; });
+}
 function tapSquare(s){
   if(busy || g.isGameOver() || g.turn()!==me()) return;
   const pc = g.get(s);
@@ -345,7 +390,6 @@ function render(){
 document.addEventListener("click", e => {
   const el = e.target.closest("[data-ch]"); if(!el) return;
   const a = el.dataset.ch;
-  if(a==="sq") tapSquare(el.dataset.sq);
   if(a==="new") newGame();
   if(a==="resign"){ if(g.history().length && !g.isGameOver()) P.twoTap(el, "Tap again", newGame); else newGame(); }
   if(a==="undo") undo();

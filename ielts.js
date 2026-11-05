@@ -302,11 +302,14 @@ const Mic = {stream:null, ctx:null, an:null, src:null, sink:null, buf:null, bbuf
       this.buf = new Float32Array(this.an.fftSize); this.bbuf = new Uint8Array(this.an.fftSize);
     }catch(e){ this.an = null; }
   },
-  async ensure(rebuild){
-    if(!this.live()){ try{ this.stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}}); }catch(e){ return; } rebuild = true; }
+  // iPad: hand the mic back while Pita talks, and take a fresh one when it's your turn
+  release(){ if(this.stream) this.stream.getTracks().forEach(t => t.stop()); this.stream = null; try{ if(this.src) this.src.disconnect(); }catch(e){} this.src = null; this.an = null; },
+  async ensure(){
+    const muted = this.stream && this.stream.getAudioTracks().some(t => t.muted);
+    if(muted) this.release();
+    if(!this.live()){ try{ this.stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}}); }catch(e){ return; } }
     const AC = window.AudioContext || window.webkitAudioContext;
-    if(rebuild && this.ctx){ try{ this.ctx.close(); }catch(e){} this.ctx = null; }
-    if(!this.ctx && AC){ try{ this.ctx = new AC(); }catch(e){ return; } rebuild = true; }
+    if((!this.ctx || this.ctx.state==="closed") && AC){ try{ this.ctx = new AC(); }catch(e){ return; } }
     if(this.ctx && this.ctx.state!=="running"){ try{ await Promise.race([this.ctx.resume(), sleep(400)]); }catch(e){} }
     this.wire();
   },
@@ -320,6 +323,7 @@ const Mic = {stream:null, ctx:null, an:null, src:null, sink:null, buf:null, bbuf
 };
 // any tap wakes the audio up again if the iPad paused it
 ["pointerdown","touchend","keydown"].forEach(ev => document.addEventListener(ev, () => { if(Mic.ctx && Mic.ctx.state!=="running"){ try{ Mic.ctx.resume(); }catch(e){} } }, {passive:true, capture:true}));
+const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "") || (navigator.platform==="MacIntel" && navigator.maxTouchPoints > 1);
 function unlockSpeech(){ try{ if(window.speechSynthesis){ const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } }catch(e){} }
 /* Records one answer. Stops by itself after a pause in speech (hands-free), or when a button finishes it. */
 async function listen(o){
@@ -341,6 +345,7 @@ async function listen(o){
         if(reason==="pause") return resolve({paused:true});
         if(reason==="skip") return resolve({skipped:true});
         if(reason==="timeout") return resolve({timeout:true});
+        if(reason==="retry") return resolve({retry:true});
         resolve({blob:new Blob(chunks, {type:mr.mimeType || "audio/webm"}), secs, spoke:speaking || secs>2, end: reason==="end"});
       };
       try{ mr.stop(); }catch(e){ resolve(null); }
@@ -352,6 +357,7 @@ async function listen(o){
       // a real mic is never perfectly silent; exact zeros mean the level meter stopped
       if(!deaf && r < 1e-7){ flat += 50;
         if(flat >= 1200){ flat = 0; fixes++;
+          if(fixes===1 && !speaking && (o.retries||0) < 2){ finish("retry"); return; }
           if(fixes <= 2){ if(Mic.ctx && Mic.ctx.state!=="running"){ try{ Mic.ctx.resume(); }catch(e){} } Mic.wire(); }
           else { deaf = true; const hh = $("stHint"); if(hh) hh.textContent = "I'm recording, but I can't see your voice level on this device. Just talk, then tap “I'm done talking”."; }
         }
@@ -392,6 +398,7 @@ function sayAloud(text, gender){
   return new Promise(res => {
     if(!text){ res(); return; }
     if(!window.speechSynthesis || prefs().voice===false){ setTimeout(res, Math.min(6000, 900 + text.length*45)); return; }
+    if(IOS) Mic.release();
     stopSpeak();
     const parts = (text.match(/[^.!?]+[.!?]*/g) || [text]).map(s => s.trim()).filter(Boolean);
     let i = 0, done = false;
@@ -410,6 +417,7 @@ async function tutorSays(text, mood){
 }
 async function listenUI(o){
   const handsFree = prefs().handsfree!==false;
+  let retries = 0;
   for(;;){
     if(!run || run.aborted) return null;
     if(pita) pita.state("listen");
@@ -418,7 +426,8 @@ async function listenUI(o){
       + (o.skip ? `<button class="btn ghost" type="button" data-ia="st-skip">Skip</button>` : "")
       + (o.end ? `<button class="btn ghost" type="button" data-ia="st-end">Finish &amp; get my band</button>` : ""));
     const pause = Math.max(3, +prefs().pauseSecs || 10)*1000;
-    const r = await listen(Object.assign({handsFree}, o, {silenceMs: Math.max(o.silenceMs || 0, pause)}));
+    const r = await listen(Object.assign({handsFree}, o, {silenceMs: Math.max(o.silenceMs || 0, pause), retries}));
+    if(r && r.retry && run && !run.aborted){ retries++; Mic.release(); await sleep(250); continue; }
     if(pita) pita.state("idle");
     if(!r || !run || run.aborted) return null;
     if(r.error){ setText("stHint", errMsg(r.error)); return null; }

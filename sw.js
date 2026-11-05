@@ -1,6 +1,6 @@
 // Offline support: keeps the app itself on the device so it opens without internet.
 // Your planner data is kept offline separately by Firebase.
-const VERSION = "azel-planner-v10";
+const VERSION = "azel-planner-v11";
 const SHELL = [
   "./",
   "./index.html",

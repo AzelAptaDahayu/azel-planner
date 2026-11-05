@@ -468,20 +468,24 @@ nav.tabs button{z-index:1}
 .chess-say::before{top:50%!important;left:-9px!important;transform:translateY(-50%) rotate(-45deg)!important}
 .chess-board{position:relative;width:100%;max-width:520px;margin:0 auto;aspect-ratio:1;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(226,132,165,.25);border:3px solid #fff;touch-action:manipulation}
 .cgrid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr)}
-.cq{border:0;padding:0;position:relative;border-radius:0}
+.cq{position:relative;cursor:pointer;-webkit-user-select:none;user-select:none}
+.chess-board{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .cq.lt{background:#FFF7EF} .cq.dk{background:#F6D2DE}
-.cq.last{background:#FCEBA9} .cq.dk.last{background:#F5D98A}
-.cq.sel{background:#CBE3F7!important}
-.cq.hint{box-shadow:inset 0 0 0 4px #8FCFAE}
-.cq.dot::after{content:"";position:absolute;left:50%;top:50%;width:26%;height:26%;border-radius:50%;background:rgba(168,67,106,.32);transform:translate(-50%,-50%)}
-.cq.cap::after{content:"";position:absolute;inset:6%;border-radius:50%;box-shadow:inset 0 0 0 4px rgba(168,67,106,.38)}
-.cq.chk{background:radial-gradient(circle, #FF8FA8 0%, #FFC2D0 45%, transparent 75%)!important}
+.cq.q-last{background:#FCEBA9} .cq.dk.q-last{background:#F5D98A}
+.cq.q-sel{background:#CBE3F7!important}
+.cq.q-hint{box-shadow:inset 0 0 0 4px #8FCFAE}
+.cq .mk{position:absolute;inset:0;border-radius:50%;pointer-events:none}
+.cq.q-dot .mk{inset:37%;background:rgba(168,67,106,.34)}
+.cq.q-cap .mk{inset:5%;box-shadow:inset 0 0 0 4px rgba(168,67,106,.4)}
+.cq.q-chk{background:radial-gradient(circle, #FF8FA8 0%, #FFC2D0 45%, transparent 75%)!important}
 .cq i{position:absolute;font-style:normal;font-size:.6rem;font-weight:800;color:#C08CA2;pointer-events:none}
 .cq i.rk{left:3px;top:2px} .cq i.fl{right:4px;bottom:1px}
 .clayer{position:absolute;inset:0;pointer-events:none}
 .cp{position:absolute;left:0;top:0;width:12.5%;height:12.5%;padding:.5% .9%;transition:transform .34s cubic-bezier(.3,1.25,.5,1)}
 .cp svg{width:100%;height:100%;display:block;filter:drop-shadow(0 2px 2px rgba(75,55,66,.18))}
 .cp.moving{z-index:3}
+.cp.dragging{transition:none;z-index:6}
+.cp.dragging svg{filter:drop-shadow(0 8px 8px rgba(75,55,66,.25))}
 .cp.moving svg{animation:hopPiece .34s ease}
 .cp.lift svg{animation:liftPiece .32s cubic-bezier(.3,1.5,.5,1)}
 .cp.gone{transition:opacity .3s ease, transform .3s ease;opacity:0}
