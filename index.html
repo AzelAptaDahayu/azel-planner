@@ -1,0 +1,2350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Azel's Study Planner</title>
+<meta name="description" content="Azel's timetable, to-dos, courses, calendar, focus timer and money pockets.">
+<meta name="theme-color" content="#FFF8F1">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Azel Planner">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: one phone-width column of soft rounded cards on milk white, pastel pink / blue / yellow accents, bottom tab bar. Single light look by choice (milk-white background). */
+:root{
+  color-scheme: light;
+  --bg:#FFF8F1; --surface:#FFFFFF; --ink:#4B3742; --muted:#8A7480; --line:#F2E1E7; --soft:#FCEFF3;
+  --pink:#F8C9D7; --pink-soft:#FDE8EF; --pink-ink:#A8436A;
+  --blue:#CBE3F7; --blue-soft:#EAF4FC; --blue-ink:#2F6A9E;
+  --yellow:#FCEBA9; --yellow-soft:#FFF7DC; --yellow-ink:#80600F;
+  --accent:#F4AFC4; --accent-ink:#4B3742; --accent-soft:#FDE8EF;
+  --good:#2F7350; --bad:#C2456A; --scrim:rgba(75,55,66,.32);
+  --warn-bg:#FFF4D1; --warn-ink:#80600F;
+  --shadow:0 6px 22px rgba(226,132,165,.13);
+  --t-class:#8DBBE5; --t-asdos:#B5D3EE; --t-study:#EE9AB5; --t-routine:#D6C8CF; --t-move:#E0D5DA; --t-walk:#8FCFAE;
+  --t-fun:#F0CC5C; --t-rest:#EBE2E6; --t-sleep:#B9A6E3; --t-work:#F2B38A; --t-plan:#EE9AB5; --t-event:#E987A8; --t-free:#F5D66E;
+  --f-display:"Fredoka","Nunito","Segoe UI",system-ui,sans-serif;
+  --f-body:"Nunito","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{margin:0;padding-top:env(safe-area-inset-top,0px);background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+img,svg{max-width:100%}
+.wrap{max-width:580px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:18px 120px;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;font-weight:600}
+h1{font-size:1.65rem;font-weight:700}
+h2{font-size:1.2rem}
+h3{font-size:1.02rem}
+p{margin:0}
+.mono{font-variant-numeric:tabular-nums;font-weight:800}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:800}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+.neg{color:var(--bad)} .pos{color:var(--good)} .warn{color:var(--yellow-ink)}
+button{font:inherit;cursor:pointer;color:inherit}
+a{color:var(--blue-ink)}
+button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--pink-ink);outline-offset:2px}
+.section{display:flex;flex-direction:column;gap:10px}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
+.card ol,.card ul{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px}
+.btn{border:0;border-radius:14px;padding:12px 16px;font-weight:800;background:var(--accent);color:var(--accent-ink)}
+.btn:hover{filter:brightness(.97)}
+.btn.ghost{background:var(--soft);color:var(--ink)}
+.btn.bluebtn{background:var(--blue)} .btn.yellowbtn{background:var(--yellow)} .btn.pinkbtn{background:var(--pink)}
+.btn.small{padding:8px 12px;font-size:.88rem;border-radius:12px}
+.btn[disabled]{opacity:.5;cursor:default}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn-row .btn{flex:1 1 130px}
+.linkbtn{border:0;background:transparent;color:var(--pink-ink);font-weight:800;padding:4px 2px;font-size:.88rem}
+.notice{background:var(--warn-bg);color:var(--warn-ink);border-radius:14px;padding:12px 14px;font-size:.93rem}
+.hint{font-size:.92rem;color:var(--ink);background:var(--blue-soft);border-radius:14px;padding:10px 12px}
+.empty{color:var(--muted);background:var(--surface);border:1px dashed var(--pink);border-radius:16px;padding:16px;text-align:center}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+select,textarea,input.in{font:inherit;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;width:100%;min-width:0}
+textarea{min-height:90px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (min-width:480px){.grid4{grid-template-columns:repeat(4,1fr)}}
+.grid2 > *,.grid4 > *{min-width:0}
+.inline{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.inline > input,.inline > select{flex:1 1 140px;min-width:0;width:auto}
+.tag{display:inline-block;font-size:.74rem;font-weight:800;padding:2px 9px;border-radius:99px;background:var(--cb,var(--pink-soft));color:var(--cf,var(--pink-ink));white-space:nowrap}
+.segs{display:grid;grid-auto-columns:1fr;grid-auto-flow:column;gap:4px;background:var(--soft);padding:4px;border-radius:14px}
+.segs button{border:0;border-radius:11px;padding:9px 4px;background:transparent;color:var(--muted);font-weight:800;font-size:.86rem}
+.segs button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 2px 8px rgba(226,132,165,.18)}
+.segs .cnt{display:inline-block;min-width:1.4em;padding:0 5px;border-radius:99px;background:var(--pink-soft);color:var(--pink-ink);font-size:.75rem}
+
+/* Header */
+.hero-top{border-radius:24px;padding:18px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;
+  background:radial-gradient(circle at 8% 15%, var(--pink) 0, transparent 42%), radial-gradient(circle at 95% 5%, var(--blue) 0, transparent 45%), radial-gradient(circle at 70% 120%, var(--yellow) 0, transparent 50%), var(--surface);
+  border:1px solid var(--line)}
+.hero-top .bow{width:26px;height:18px;vertical-align:-2px;margin-left:4px}
+.clock{font-family:var(--f-display);font-size:2.3rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.date{color:var(--muted);font-size:.92rem;font-weight:700}
+
+.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+.syncbtn{border:0;background:rgba(255,255,255,.75);border-radius:99px;padding:6px 11px;font-weight:800;font-size:.78rem;display:flex;gap:6px;align-items:center;color:var(--ink)}
+.syncbtn svg{width:16px;height:16px}
+.syncbtn.off{color:var(--bad)} .syncbtn.on{color:var(--good)}
+.qr{background:#fff;border-radius:18px;padding:10px;width:min(230px,70vw);margin:0 auto;border:1px solid var(--line)}
+.qr svg{width:100%;height:auto;display:block}
+.welcome{position:fixed;inset:0;z-index:40;overflow:auto;background:radial-gradient(circle at 10% 10%, var(--pink) 0, transparent 40%), radial-gradient(circle at 95% 20%, var(--blue) 0, transparent 40%), radial-gradient(circle at 50% 110%, var(--yellow) 0, transparent 50%), var(--bg);
+  padding-top:calc(24px + env(safe-area-inset-top, 0px));padding-bottom:calc(24px + env(safe-area-inset-bottom, 0px));padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.welcome-in{max-width:440px;margin:6vh auto 0;display:flex;flex-direction:column;gap:16px}
+.welcome-in .bigbow{width:72px;height:50px;margin:0 auto}
+.welcome-in h1{text-align:center}
+.welcome-in > p{text-align:center}
+/* Now card */
+.now{background:var(--surface);border-radius:22px;padding:18px 18px 18px 22px;display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.now::before{content:"";position:absolute;inset:0 auto 0 0;width:8px;background:var(--tc,var(--t-study))}
+.now .title{font-family:var(--f-display);font-size:1.45rem;font-weight:600;line-height:1.2}
+.now .note{color:var(--muted)}
+.bar{height:9px;border-radius:99px;background:var(--soft);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--tc,var(--t-study));width:0;transition:width .6s;border-radius:99px}
+.now-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.9rem}
+.next{border-top:1.5px dashed var(--line);padding-top:10px;font-size:.92rem}
+
+/* Anchors */
+.anchors{gap:0}
+.anchor{display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.anchor:last-child{border-bottom:0}
+.anchor input{width:22px;height:22px;accent-color:var(--pink-ink);flex:none}
+.anchor label{flex:1;cursor:pointer}
+.anchor .mono{color:var(--muted);font-size:.85rem;font-weight:700}
+.anchor.done label{color:var(--muted);text-decoration:line-through}
+
+/* Week chips + timeline */
+.weekbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.arrow{border:0;background:var(--soft);border-radius:12px;width:38px;height:38px;font-size:1.2rem;font-weight:800;color:var(--ink)}
+.chips{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.chip{border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:7px 0;font-weight:800;font-size:.8rem;display:flex;flex-direction:column;align-items:center;gap:0;position:relative}
+.chip b{font-family:var(--f-display);font-size:1.05rem;font-weight:600}
+.chip.is-today{border-color:var(--pink)}
+.chip[aria-pressed="true"]{background:var(--pink);border-color:var(--pink)}
+.chip .cdot{position:absolute;top:4px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--t-free)}
+.timeline{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
+.row{display:grid;grid-template-columns:54px 6px minmax(0,1fr);gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:start}
+.row:last-child{border-bottom:0}
+.row .time{font-size:.8rem;line-height:1.35;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:700}
+.row .time b{color:var(--ink);font-weight:800;display:block;font-size:.92rem}
+.row .stripe{align-self:stretch;border-radius:6px;background:var(--tc)}
+.row .body{min-width:0;display:flex;flex-direction:column;gap:3px}
+.row .t{font-weight:800}
+.row .n{color:var(--muted);font-size:.9rem}
+.row .meta{font-size:.76rem;color:var(--muted);font-weight:700;letter-spacing:.02em}
+.row .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.row.past{opacity:.5}
+.row.current{background:var(--pink-soft)}
+.row.free{background:var(--yellow-soft)}
+.row.current .t::after{content:"NOW";font-size:.66rem;font-weight:800;margin-left:8px;padding:2px 7px;border-radius:99px;background:var(--pink-ink);color:#fff;vertical-align:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted);font-weight:700}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:4px;background:var(--tc);display:inline-block}
+.changes{display:flex;flex-direction:column;gap:6px}
+.change{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--yellow-soft);border-radius:14px;padding:10px 12px;font-size:.9rem}
+.change > span{min-width:0}
+
+/* To-do */
+.todos{display:flex;flex-direction:column;gap:8px}
+.todo{display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px 12px}
+.todo.missed{border-color:#F3C2D0;background:#FFF5F8}
+.todo.completed{opacity:.7}
+.check{width:28px;height:28px;border-radius:50%;border:2px solid var(--t-study);background:var(--surface);display:grid;place-items:center;padding:0;margin-top:2px}
+.check svg{width:16px;height:16px;fill:none;stroke:transparent;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.check.on{background:var(--t-study)}
+.check.on svg{stroke:#fff}
+.tbody{border:0;background:transparent;text-align:left;padding:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+.tt{font-weight:800;overflow-wrap:anywhere}
+.todo.completed .tt{text-decoration:line-through}
+.tmeta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.82rem}
+.due{color:var(--muted);font-weight:700}
+.due.neg{color:var(--bad)} .due.warn{color:var(--yellow-ink)}
+.tdesc{font-size:.86rem;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+
+/* Courses */
+.folders{display:grid;grid-template-columns:1fr 1fr;gap:20px 12px;padding-top:10px}
+@media (min-width:540px){.folders{grid-template-columns:repeat(3,1fr)}}
+.folder{position:relative;border:0;text-align:left;background:var(--fb);border-radius:4px 18px 18px 18px;padding:16px 14px 14px;display:flex;flex-direction:column;gap:4px;min-height:118px;box-shadow:var(--shadow)}
+.folder::before{content:"";position:absolute;left:0;top:-11px;width:48%;height:14px;background:var(--fb);border-radius:12px 12px 0 0}
+.folder::after{content:"";position:absolute;left:12px;top:-7px;width:8px;height:8px;border-radius:50%;background:var(--fs)}
+.fname{font-family:var(--f-display);font-weight:600;font-size:1rem;line-height:1.25;overflow-wrap:break-word;hyphens:auto}
+.fcode{font-size:.78rem;color:var(--fi);font-weight:800}
+.fcount{font-size:.78rem;color:var(--ink);opacity:.75;margin-top:auto}
+.course-head{border-radius:22px;padding:18px;background:var(--fb);display:flex;flex-direction:column;gap:6px}
+.course-head .meta{font-size:.86rem;color:var(--fi);font-weight:800}
+.back{border:0;background:transparent;color:var(--pink-ink);font-weight:800;padding:2px 0;text-align:left}
+.setcard{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+.fileitem,.linkitem{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.fileitem:last-child,.linkitem:last-child{border-bottom:0}
+.fileitem .info,.linkitem .info{min-width:0;display:flex;flex-direction:column}
+.fileitem a,.linkitem a{font-weight:800;overflow-wrap:anywhere}
+.cardrow{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:14px;background:var(--soft)}
+.cardrow textarea{min-height:56px;background:var(--surface)}
+.cardrow-head{display:flex;justify-content:space-between;align-items:center}
+
+/* Review */
+.review{position:fixed;inset:0;z-index:25;background:var(--bg);display:flex;flex-direction:column;gap:16px;padding-top:calc(16px + env(safe-area-inset-top, 0px));padding-bottom:calc(20px + env(safe-area-inset-bottom, 0px));padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));overflow:auto}
+.review-in{max-width:560px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px;flex:1}
+.flip{border:0;padding:0;background:transparent;color:var(--ink);perspective:1200px;width:100%;min-height:300px;display:grid;flex:1;max-height:440px}
+.flip .face{grid-area:1/1;border-radius:24px;padding:24px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;text-align:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;transition:transform .5s;box-shadow:var(--shadow)}
+.flip .front{background:var(--pink-soft);border:2px solid var(--pink)}
+.flip .back{background:var(--blue-soft);border:2px solid var(--blue);transform:rotateY(180deg)}
+.flip.flipped .front{transform:rotateY(-180deg)}
+.flip.flipped .back{transform:rotateY(0)}
+.ftxt{font-family:var(--f-display);font-size:1.35rem;font-weight:500;white-space:pre-wrap;overflow-wrap:anywhere}
+.rv-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rv-btns .btn{padding:16px}
+.rv-done{display:flex;flex-direction:column;gap:12px;text-align:center;padding:30px 10px}
+
+/* Calendar */
+.cal-head{display:flex;align-items:center;gap:8px}
+.cal-head h2{flex:1;text-align:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:10px;box-shadow:var(--shadow)}
+.cal-dow{text-align:center;font-size:.72rem;font-weight:800;color:var(--muted);padding:2px 0 6px}
+.cal-cell{border:0;background:transparent;border-radius:12px;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;padding:5px 0}
+.cal-cell .dn{font-weight:800;font-size:.92rem;width:28px;height:28px;display:grid;place-items:center;border-radius:50%}
+.cal-cell.out{opacity:.38}
+.cal-cell.today .dn{background:var(--yellow)}
+.cal-cell.sel{background:var(--pink-soft);outline:2px solid var(--pink)}
+.dots{display:flex;gap:3px;height:7px}
+.dots i{width:7px;height:7px;border-radius:50%;display:block}
+.d-todo{background:var(--t-study)} .d-event{background:var(--t-class)} .d-chg{background:var(--t-fun)}
+.dayitem{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line);font-size:.93rem}
+.dayitem:last-child{border-bottom:0}
+.dayitem .tm{font-weight:800;font-variant-numeric:tabular-nums;min-width:92px;color:var(--muted);font-size:.85rem}
+.dayitem button{border:0;background:transparent;padding:0;text-align:left;font-weight:800;color:var(--ink)}
+
+/* Ideas */
+.ideas{display:flex;flex-direction:column;gap:8px}
+.idea{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;padding:12px;border-radius:16px;background:var(--soft)}
+.idea .num{width:28px;height:28px;border-radius:50%;background:var(--pink);display:grid;place-items:center;font-weight:800;font-size:.85rem}
+.idea p{font-size:.9rem;color:var(--muted);margin-top:2px}
+.idea .btn-row{margin-top:8px}
+.plan{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.plan .pr{display:grid;grid-template-columns:100px 6px minmax(0,1fr);gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:.9rem;align-items:center}
+.plan .pr:last-child{border-bottom:0}
+.plan .pr .tm{font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted);font-size:.84rem}
+.plan .pr i{align-self:stretch;border-radius:4px;background:var(--tc)}
+
+/* Focus */
+.focus{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px 18px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow)}
+.ring-wrap{display:grid;place-items:center;position:relative}
+.ring{width:min(240px,70vw);height:auto;max-width:100%}
+.ring circle{fill:none;stroke-width:14}
+.ring .track{stroke:var(--pink-soft)}
+.ring .prog{stroke:var(--t-study);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .5s linear}
+.ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.ring-time{font-family:var(--f-display);font-size:2.7rem;font-weight:600;font-variant-numeric:tabular-nums}
+.phase{font-family:var(--f-display);font-weight:600;color:var(--pink-ink)}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.steps li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 10px;border-radius:14px;color:var(--muted)}
+.steps li .k{font-weight:800;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--soft);font-size:.8rem}
+.steps li.on{background:var(--pink-soft);color:var(--ink)}
+.steps li.on .k{background:var(--t-study);color:#fff}
+.steps li.done .k{background:var(--blue);color:var(--ink)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:2px}
+.stat:nth-child(1){background:var(--pink-soft)} .stat:nth-child(2){background:var(--blue-soft)} .stat:nth-child(3){background:var(--yellow-soft)}
+.stat b{font-family:var(--f-display);font-size:1.6rem;font-weight:600;font-variant-numeric:tabular-nums}
+.stat span{font-size:.78rem;color:var(--muted);font-weight:700}
+.log{display:flex;flex-direction:column;gap:8px}
+.log-item{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.log-item .top{display:flex;justify-content:space-between;gap:8px;font-size:.85rem}
+.log-item p{white-space:pre-wrap;font-size:.93rem;overflow-wrap:anywhere}
+details.card > summary{cursor:pointer;font-weight:800}
+.course-list{display:flex;flex-direction:column;gap:10px}
+.course-list div{display:flex;flex-direction:column;gap:2px}
+.course-list span{font-size:.92rem;color:var(--muted)}
+
+/* Money */
+.money-hero{background:linear-gradient(135deg, var(--pink-soft), var(--blue-soft) 60%, var(--yellow-soft));border:1px solid var(--line);color:var(--ink);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow)}
+.money-hero .big{font-family:var(--f-display);font-size:2.1rem;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.money-hero .sub{font-size:.85rem;color:var(--muted);font-weight:700}
+.hero-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;border-top:1.5px dashed rgba(75,55,66,.18);padding-top:12px}
+.hero-row b{font-size:1.05rem;display:block;font-variant-numeric:tabular-nums}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.quick .btn{padding:12px 6px;font-size:.86rem}
+.quick .wide{grid-column:1 / -1;padding:14px;font-size:1rem}
+.pockets{padding:2px 16px;gap:0}
+.pocket{display:grid;grid-template-columns:6px minmax(0,1fr) auto;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);align-items:center}
+.pocket:last-child{border-bottom:0}
+.pocket .stripe{align-self:stretch;border-radius:6px;background:var(--pc)}
+.pocket .info{min-width:0;display:flex;flex-direction:column;gap:2px}
+.pocket .info .n{font-size:.86rem;color:var(--muted)}
+.pocket .info .x{font-size:.86rem}
+.pocket .right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pocket .bal{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.held{border-left:7px solid var(--t-sleep)}
+.held .bal{font-weight:800;font-size:1.1rem;font-variant-numeric:tabular-nums}
+.held details summary{cursor:pointer;font-weight:800;font-size:.9rem}
+.payers{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:.9rem}
+.payers li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--line);padding:4px 0}
+.split-line{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+.catrow{display:grid;grid-template-columns:minmax(0,9rem) 1fr auto;gap:10px;align-items:center;font-size:.9rem}
+.catrow .track{height:10px;border-radius:99px;background:var(--soft);overflow:hidden}
+.catrow .track i{display:block;height:100%;background:var(--t-study);border-radius:99px}
+.catrow .mono{font-size:.85rem}
+.hist{padding:2px 16px;gap:0}
+.hrow-t{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center}
+.hrow-t:last-child{border-bottom:0}
+.hrow-t .t{font-weight:800;overflow-wrap:anywhere}
+.hrow-t .s{font-size:.82rem;color:var(--muted)}
+.hrow-t .a{font-weight:800;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hrow-t .del{border:0;background:transparent;color:var(--muted);font-size:.78rem;padding:2px 0;text-align:right}
+.hrow-t .del[data-armed="1"]{color:var(--bad);font-weight:800}
+.wait-item{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.wait-item .info{min-width:0;display:flex;flex-direction:column}
+.hset{display:flex;flex-direction:column;gap:12px}
+.hset h3{margin-top:6px}
+.hrow{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:14px}
+
+/* Sheets + toast */
+.sheet-back{position:fixed;inset:0;background:var(--scrim);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:580px;border-radius:26px 26px 0 0;padding-top:18px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-bottom:calc(20px + env(safe-area-inset-bottom, 0px));max-height:92%;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.sheet::before{content:"";display:block;width:44px;height:5px;border-radius:99px;background:var(--pink);margin:-6px auto 0}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom, 0px));background:var(--ink);color:#fff;padding:10px 16px;border-radius:14px;font-weight:800;z-index:30;width:max-content;max-width:calc(100% - 32px);font-size:.92rem;text-align:center}
+
+/* Bottom tabs */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(6,1fr);padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom, 0px));padding-left:max(8px, env(safe-area-inset-left, 0px));padding-right:max(8px, env(safe-area-inset-right, 0px));z-index:5;box-shadow:0 -4px 18px rgba(226,132,165,.12)}
+nav.tabs button{border:0;background:transparent;color:var(--muted);padding:6px 0;border-radius:14px;font-weight:800;font-size:.7rem;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;min-width:0}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-selected="true"]{color:var(--pink-ink);background:var(--pink-soft)}
+.dot{position:absolute;top:4px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:var(--pink-ink)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="hero-top">
+    <div>
+      <div class="label">Azel · Semester 3 · 22 SKS</div>
+      <h1><span id="greet">Hello, Azel</span><svg class="bow" viewBox="0 0 26 18" aria-hidden="true"><path d="M13 9 3 2.5C1.6 1.6 0 2.6 0 4.2v9.6c0 1.6 1.6 2.6 3 1.7L13 9Zm0 0 10-6.5c1.4-.9 3 .1 3 1.7v9.6c0 1.6-1.6 2.6-3 1.7L13 9Z" fill="#F4AFC4"/><circle cx="13" cy="9" r="3.2" fill="#E987A8"/></svg></h1>
+      <div class="date" id="dateLine"></div>
+    </div>
+    <div class="hdr-right"><button class="syncbtn" type="button" data-act="sync" aria-label="Devices and sync"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.1 9.2 4.4 4.4 0 0 0 7 18Z"/></svg><span id="syncLbl">Sync</span></button>
+    <div class="clock" id="clock">--:--</div></div>
+  </header>
+
+  <!-- TODAY -->
+  <section id="view-today" class="section" style="gap:20px">
+    <div class="now" id="nowCard">
+      <div class="label">Now</div>
+      <div class="title" id="nowTitle">Loading…</div>
+      <div class="note" id="nowNote"></div>
+      <div class="bar"><i id="nowBar"></i></div>
+      <div class="now-row"><span id="nowRange"></span><span id="nowLeft"></span></div>
+      <div class="btn-row" id="nowActs"></div>
+      <div class="next" id="nowNext"></div>
+    </div>
+
+    <div class="notice" id="missNotice" hidden></div>
+
+    <div class="card" id="dueCard"></div>
+
+    <div class="section">
+      <div class="section-head"><h2>Daily anchors</h2><span class="muted mono" id="anchorCount"></span></div>
+      <div class="card anchors" id="anchors"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h2>Timetable</h2><button class="btn small yellowbtn" type="button" data-act="chg">Change schedule</button></div>
+      <div class="weekbar"><button class="arrow" type="button" data-act="wk" data-d="-1" aria-label="Previous week">‹</button><b id="weekLabel"></b><button class="arrow" type="button" data-act="wk" data-d="1" aria-label="Next week">›</button></div>
+      <div class="chips" id="chips" role="group" aria-label="Choose a day"></div>
+      <div class="changes" id="changes"></div>
+      <div class="timeline" id="timeline"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <!-- TO-DO -->
+  <section id="view-todo" class="section" style="gap:16px" hidden>
+    <div class="section-head"><h2>To-do</h2><button class="btn small" type="button" data-act="addtodo">New to-do</button></div>
+    <div class="segs" id="todoTabs"></div>
+    <div class="field"><label class="label" for="todoFilter">Show label</label><select id="todoFilter"></select></div>
+    <div class="todos" id="todoList"></div>
+    <p class="muted small saveinfo"></p>
+  </section>
+
+  <!-- COURSES -->
+  <section id="view-courses" class="section" style="gap:16px" hidden>
+    <div id="courseHome" class="section" style="gap:14px">
+      <div class="section-head"><h2>My courses</h2><button class="btn small ghost" type="button" data-act="addcourse">Add course</button></div>
+      <div class="folders" id="folders"></div>
+      <p class="muted small saveinfo"></p>
+    </div>
+    <div id="courseDetail" class="section" style="gap:14px" hidden>
+      <button class="back" type="button" data-act="cback">‹ All courses</button>
+      <div class="course-head" id="cHead"></div>
+      <div class="segs" id="cTabs"></div>
+      <div id="cBody" class="section"></div>
+    </div>
+  </section>
+
+  <!-- CALENDAR -->
+  <section id="view-cal" class="section" style="gap:14px" hidden>
+    <div class="cal-head"><button class="arrow" type="button" data-act="cal" data-d="-1" aria-label="Previous month">‹</button><h2 id="calTitle"></h2><button class="arrow" type="button" data-act="cal" data-d="1" aria-label="Next month">›</button><button class="btn small ghost" type="button" data-act="caltoday">Today</button></div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="legend"><span style="--tc:var(--t-study)"><i style="border-radius:50%"></i>To-do deadline</span><span style="--tc:var(--t-class)"><i style="border-radius:50%"></i>Event</span><span style="--tc:var(--t-fun)"><i style="border-radius:50%"></i>Schedule change</span></div>
+    <div class="card" id="calDay"></div>
+  </section>
+
+  <!-- FOCUS -->
+  <section id="view-focus" class="section" style="gap:20px" hidden>
+    <div class="stats">
+      <div class="stat"><b id="stToday">0</b><span>blocks today</span></div>
+      <div class="stat"><b id="stMins">0</b><span>minutes today</span></div>
+      <div class="stat"><b id="stStreak">0</b><span>day streak</span></div>
+    </div>
+
+    <div class="focus">
+      <div class="segs" role="group" aria-label="Block length">
+        <button type="button" id="len15" aria-pressed="true">Starter · 15 min</button>
+        <button type="button" id="len25" aria-pressed="false">Level 2 · 25 min</button>
+      </div>
+      <div class="field">
+        <label class="label" for="course">What are you studying?</label>
+        <select id="course"></select>
+      </div>
+      <div class="hint" id="courseHint"></div>
+
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 240 240" aria-hidden="true">
+          <circle class="track" cx="120" cy="120" r="104"></circle>
+          <circle class="prog" id="ringProg" cx="120" cy="120" r="104"></circle>
+        </svg>
+        <div class="ring-label">
+          <div class="ring-time" id="ringTime">15:00</div>
+          <div class="phase" id="phase">Ready</div>
+        </div>
+      </div>
+
+      <ol class="steps" id="steps">
+        <li data-s="0"><span class="k">1</span><span><b>Read one small part.</b> One slide section, one example, or one problem.</span></li>
+        <li data-s="1"><span class="k">2</span><span><b>Close it and recall.</b> On blank paper, write what you remember, or solve it without looking.</span></li>
+        <li data-s="2"><span class="k">3</span><span><b>Check and fix.</b> Open it again. Fix mistakes in another color.</span></li>
+      </ol>
+
+      <div id="recallBox" class="field" hidden>
+        <label class="label" for="recallText">Recall check: without looking, what do you remember?</label>
+        <textarea id="recallText" placeholder="2–3 lines are enough."></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" type="button" id="startBtn">Start focus</button>
+        <button class="btn ghost" type="button" id="stopBtn" hidden>Stop</button>
+      </div>
+      <p class="muted small">Phone face down. Desk, not bed. If you get sleepy: stand up, wash your face, drink water, and switch from reading to writing.</p>
+    </div>
+
+    <div class="section">
+      <h2>Today's recall notes</h2>
+      <div class="log" id="log"></div>
+    </div>
+
+    <details class="card">
+      <summary>How to study with active recall</summary>
+      <p>Active recall means you learn by pulling ideas <b>out</b> of your head, not by reading again and again. Reading feels easy but you forget fast. Recalling feels hard, and that hard feeling is the learning.</p>
+      <ol>
+        <li>Put your phone in another room, or face down on Do Not Disturb.</li>
+        <li>Sit at a desk or table, not on your bed. Start a 15-minute block.</li>
+        <li>Read one small part only.</li>
+        <li>Close it. Write what you remember on blank paper, or try the problem without looking.</li>
+        <li>Open it, check, and fix your mistakes in another color.</li>
+        <li>Take a 5-minute break. Stand up, drink water. No scrolling.</li>
+      </ol>
+      <p>Review the same topic again after <b>1 day</b>, <b>3 days</b>, and <b>1 week</b>. Study sets in Courses make this easy.</p>
+    </details>
+    <details class="card">
+      <summary>Method for each course</summary>
+      <div class="course-list" id="courseGuide"></div>
+    </details>
+    <details class="card">
+      <summary>When a day goes wrong</summary>
+      <ul>
+        <li>Rule: <b>never miss twice in a row.</b></li>
+        <li>Don't pay back a missed day by staying up late. It breaks tomorrow too.</li>
+        <li>The next day, one 15-minute block counts as a restart.</li>
+        <li>Keep the 05:00 wake-up even after a bad night.</li>
+        <li>Scrolling after 22:00? Put the phone outside your room. That's all.</li>
+      </ul>
+      <p class="muted">You don't have to carry this alone. Ask at your faculty about the student counseling service. If things feel too heavy, Indonesia's mental health line is <b style="color:var(--ink)">119 ext. 8</b>.</p>
+    </details>
+  </section>
+
+  <!-- MONEY -->
+  <section id="view-money" class="section" style="gap:20px" hidden>
+    <div class="card" id="mLoading"><p class="muted">Loading your money…</p></div>
+    <div class="notice" id="mNote" hidden></div>
+
+    <div id="mSetup" class="section" style="gap:16px" hidden>
+      <h2>Let's sort the money you have now</h2>
+      <p class="muted">All your money sits in one bank account, so it gets mixed. This splits it into pockets, so you always know what is yours and what belongs to someone else. Start with what you have today.</p>
+      <div class="card">
+        <div class="field"><label class="label" for="suNow">Money you have right now (bank + cash)</label><input class="in amt" id="suNow" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+        <div class="field"><label class="label" for="suHeld">UKMP money already collected (it's inside the total above)</label><input class="in amt" id="suHeld" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+        <div class="field"><label class="label" for="suPaid">How many people have paid so far?</label><input class="in" id="suPaid" type="number" min="0" inputmode="numeric" placeholder="0"></div>
+        <div class="field"><label class="label" for="suBel">Left from Bunda's money this week</label><input class="in amt" id="suBel" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+        <div class="hint" id="suPrev"></div>
+      </div>
+      <h3>Check these numbers</h3>
+      <div class="card">
+        <div class="grid2">
+          <div class="field"><label class="label" for="suSalary">Salary per month</label><input class="in amt" id="suSalary" inputmode="numeric" autocomplete="off"></div>
+          <div class="field"><label class="label" for="suPayday">Payday (day of month)</label><input class="in" id="suPayday" type="number" min="1" max="31" inputmode="numeric"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label class="label" for="suWeekly">Bunda's money per week</label><input class="in amt" id="suWeekly" inputmode="numeric" autocomplete="off"></div>
+          <div class="field"><label class="label" for="suWeekStart">It usually comes on</label><select id="suWeekStart"></select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label class="label" for="suPer">UKMP fee per person</label><input class="in amt" id="suPer" inputmode="numeric" autocomplete="off"></div>
+          <div class="field"><label class="label" for="suPeople">Number of people</label><input class="in" id="suPeople" type="number" min="0" inputmode="numeric"></div>
+        </div>
+      </div>
+      <div class="notice" id="suErr" hidden></div>
+      <button class="btn" id="suStart" type="button">Start my pockets</button>
+    </div>
+
+    <div id="mMain" class="section" style="gap:22px" hidden>
+      <div class="money-hero" id="mHero"></div>
+      <div class="quick">
+        <button class="btn wide" type="button" data-k="spend">I spent money</button>
+        <button class="btn ghost" type="button" data-k="salary">Salary in</button>
+        <button class="btn ghost" type="button" data-k="bonus">Bonus in</button>
+        <button class="btn ghost" type="button" data-k="mom">Bunda's money in</button>
+        <button class="btn ghost" type="button" data-k="heldin">Iuran in</button>
+        <button class="btn ghost" type="button" data-k="move">Move money</button>
+        <button class="btn ghost" type="button" data-k="income">Other income</button>
+      </div>
+      <div class="section">
+        <div class="section-head"><h2>Your pockets</h2><span class="muted small">Your money</span></div>
+        <div class="card pockets" id="mOwn"></div>
+      </div>
+      <div class="section">
+        <div class="section-head"><h2>Not your money</h2><span class="muted small">Hold it, don't spend it</span></div>
+        <div class="section" id="mHeld"></div>
+      </div>
+      <div class="section">
+        <div class="section-head"><h2>Bank check</h2><span class="muted small" id="bankLast"></span></div>
+        <div class="card">
+          <p class="muted">Open your bank app, add any cash in your wallet, and type the total. If it doesn't match, the app helps you fix it.</p>
+          <div class="inline"><input class="in amt" id="bankIn" inputmode="numeric" autocomplete="off" placeholder="Bank + cash now"><button class="btn small" type="button" id="bankBtn">Check</button></div>
+          <div id="bankRes"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-head"><h2>Wait 24 hours</h2><span class="muted small" id="wSaved"></span></div>
+        <div class="card">
+          <p class="muted">Want something you don't need, over Rp 50.000? Put it here first. If you still want it tomorrow, buy it from Fun.</p>
+          <div class="inline"><input class="in" id="wName" maxlength="60" placeholder="What is it?"><input class="in amt" id="wPrice" inputmode="numeric" autocomplete="off" placeholder="Price"><button class="btn small" type="button" id="wAdd">Add</button></div>
+          <div id="wList"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-head"><h2>Where my money went</h2><span class="muted small" id="mMonthName"></span></div>
+        <div class="card" id="mMonth"></div>
+      </div>
+      <div class="section">
+        <h2>History</h2>
+        <div class="card hist" id="mHist"></div>
+      </div>
+      <details class="card" id="mSet">
+        <summary><b>Settings</b> <span class="muted small">salary, splits, Bunda's money, UKMP</span></summary>
+        <div id="mSetForm" class="hset"></div>
+      </details>
+      <div class="card">
+        <h3>Money rules</h3>
+        <ol>
+          <li>When salary comes, split it the same day. Savings first.</li>
+          <li>UKMP money is never yours. Don't borrow from it, even for one day.</li>
+          <li>Log every spend the same day. It takes 10 seconds.</li>
+          <li>Do the bank check every Sunday at your weekly reset.</li>
+          <li>Wants over Rp 50.000 go on the 24-hour list first.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button role="tab" id="tab-today" aria-selected="true" data-v="today" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>Today</button>
+  <button role="tab" id="tab-todo" aria-selected="false" data-v="todo" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="18" rx="3"/><path d="m8 10 2 2 4-4M8 16h8"/></svg>To-do<span class="dot" id="todoDot" hidden></span></button>
+  <button role="tab" id="tab-courses" aria-selected="false" data-v="courses" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>Courses</button>
+  <button role="tab" id="tab-cal" aria-selected="false" data-v="cal" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Calendar</button>
+  <button role="tab" id="tab-focus" aria-selected="false" data-v="focus" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>Focus<span class="dot" id="focusDot" hidden></span></button>
+  <button role="tab" id="tab-money" aria-selected="false" data-v="money" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18v3"/><rect x="3" y="7.5" width="18" height="13" rx="2.5"/><path d="M16 13.5h2"/></svg>Money</button>
+</nav>
+
+<div class="welcome" id="welcome" hidden>
+  <div class="welcome-in">
+    <svg class="bigbow" viewBox="0 0 26 18" aria-hidden="true"><path d="M13 9 3 2.5C1.6 1.6 0 2.6 0 4.2v9.6c0 1.6 1.6 2.6 3 1.7L13 9Zm0 0 10-6.5c1.4-.9 3 .1 3 1.7v9.6c0 1.6-1.6 2.6-3 1.7L13 9Z" fill="#F4AFC4"/><circle cx="13" cy="9" r="3.2" fill="#E987A8"/></svg>
+    <h1>Azel's Study Planner</h1>
+    <p class="muted">Your timetable, to-dos, courses, calendar and money, the same on your laptop, phone and iPad.</p>
+    <div class="card">
+      <b>Connect this device</b>
+      <p class="muted small">Open your private planner link on this device, or scan the QR code from Sync on a device that already has it. You can also paste the link here.</p>
+      <input class="in" id="wCode" autocomplete="off" placeholder="Your planner link">
+      <button class="btn ghost" type="button" data-act="wjoin">Connect this device</button>
+      <div class="notice" id="wErr" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-back" id="pBack" hidden>
+  <div class="sheet" id="pSheet" role="dialog" aria-modal="true" aria-labelledby="pTitle">
+    <div class="sheet-head"><h2 id="pTitle"></h2><button type="button" class="btn ghost small" id="pClose">Close</button></div>
+    <div id="pBody" class="section" style="gap:12px"></div>
+  </div>
+</div>
+
+<div class="review" id="review" hidden>
+  <div class="review-in">
+    <div class="section-head"><div><div class="label" id="rvProg"></div><h2 id="rvTitle"></h2></div><button class="btn ghost small" type="button" data-act="rvclose">Close</button></div>
+    <div id="rvBody" class="section" style="flex:1;gap:16px"></div>
+  </div>
+</div>
+
+<div class="sheet-back" id="sheetBack" hidden>
+  <form class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" novalidate>
+    <div class="sheet-head"><h2 id="sheetTitle">Add</h2><button type="button" class="btn ghost small" id="sheetClose">Cancel</button></div>
+    <div id="sheetBody" class="section"></div>
+    <div id="sheetWarn" class="notice" hidden></div>
+    <button class="btn" id="sheetSave" type="submit">Save</button>
+  </form>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="qrcode.js"></script>
+<script>
+(function(){
+"use strict";
+/* ================= utils ================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parseYmd = s => { const p = String(s).split("-").map(Number); return new Date(p[0], (p[1]||1)-1, p[2]||1); };
+const toMin = s => { const p = String(s||"0:0").split(":").map(Number); return (p[0]||0)*60+(p[1]||0); };
+const fromMin = m => pad(Math.floor(m/60))+":"+pad(m%60);
+const newId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const clone = o => JSON.parse(JSON.stringify(o));
+const today = () => ymd(new Date());
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const DAYS_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MON_S = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmtD = s => { const d = parseYmd(s); return DAYS[d.getDay()]+" "+d.getDate()+" "+MON_S[d.getMonth()]; };
+const fmtLong = s => { const d = parseYmd(s); return DAYS_LONG[d.getDay()]+", "+d.getDate()+" "+MONTHS[d.getMonth()]; };
+const durTxt = m => m>=60 ? Math.floor(m/60)+" h"+(m%60 ? " "+(m%60)+" min" : "") : m+" min";
+const field = (id,label,inner) => `<div class="field"><label class="label" for="${id}">${label}</label>${inner}</div>`;
+const store = {
+  get(k,d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const safe = fn => { try{ fn(); }catch(e){ console.error(e); } };
+let toastT = null;
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3400); }
+
+/* ================= courses + labels ================= */
+const PAL = {
+  pink:["#FDE8EF","#EE9AB5","#A8436A"], blue:["#E6F1FB","#8DBBE5","#2F6A9E"], yellow:["#FFF4CF","#F0CC5C","#80600F"],
+  mint:["#E3F4EA","#8FCFAE","#2F7350"], lilac:["#EFE8FB","#B9A6E3","#674C9E"], peach:["#FEEADF","#F2B38A","#94532E"]
+};
+const GENERIC_HOW = "After reading, close it and write 3 main points from memory. Then check.";
+const BUILTIN = {
+  econ:  {name:"Basic Econometrics", code:"EKO61109", room:"Online", sks:3, color:"blue",
+          how:"Rewrite one derivation from memory, step by step, and say where each line comes from. Your lecturer wants exactly this."},
+  macro: {name:"Macroeconomics 2", code:"EKO61108", room:"Gedung A2.6", sks:3, color:"pink",
+          how:"Do end-of-chapter problems and past midterm questions without looking at the answer first."},
+  micro: {name:"Microeconomics 2", code:"EKO61107", room:"Online", sks:3, color:"yellow",
+          how:"Try one problem (technology, profit max, cost min) before reading the solution. Doing problems is active recall."},
+  mon:   {name:"Monetary Economics", code:"EKO61114", room:"Gedung A2.4", sks:3, color:"lilac",
+          how:"Explain one idea in plain words, as if to a friend, with a simple graph. Then check your notes."},
+  pub:   {name:"Economics of Public Sector", code:"EKO61110", room:"Gedung A2.1", sks:3, color:"mint", how:GENERIC_HOW},
+  urban: {name:"Urban and Regional Economics", code:"EKO61111", room:"Gedung A2.6A", sks:3, color:"peach", how:GENERIC_HOW},
+  panc:  {name:"Pancasila", code:"MWU60102", room:"J3.3", sks:2, color:"blue", how:GENERIC_HOW},
+  pkn:   {name:"Pendidikan Kewarganegaraan", code:"MWU60103", room:"J3.4", sks:2, color:"pink", how:GENERIC_HOW}
+};
+const EXTRA = {personal:{name:"Personal", color:"lilac"}, work:{name:"Kandui work", color:"peach"}, ukmp:{name:"UKMP", color:"mint"}, other:{name:"Other", color:"yellow"}};
+
+/* ================= weekly schedule ================= */
+const sleep0 = ["00:00","05:00","sleep","Sleep","Phone stays outside the bedroom."];
+const wake = [
+  ["05:00","05:15","routine","Wake up","Same time every day. Glass of water + 5 min of morning light."],
+  ["05:15","06:00","routine","Get ready","Shower and breakfast. Phone stays on the desk."]
+];
+const campusMorning = (n,c) => [
+  ["06:00","06:20","study","Study block",n,c],
+  ["06:20","07:00","routine","Prepare for campus","Pack your bag and check today's classes."],
+  ["07:00","08:30","move","Travel to campus","No scrolling on the way. Music or a podcast is fine."]
+];
+const night = [
+  ["20:00","21:00","fun","Fun time","Chat, YouTube, music. No TikTok for now."],
+  ["21:00","22:00","routine","Wind down","Pack tomorrow's bag. Lower the lights."],
+  ["22:00","22:30","routine","Phone out of bedroom","Charge it outside. Read or stretch."],
+  ["22:30","24:00","sleep","Sleep","In bed by 22:30, asleep by 23:00."]
+];
+const classEvening = (n,c) => [
+  ["16:00","16:30","move","Go home",""],
+  ["16:30","17:00","walk","Walk","20–30 minutes. Slow walking still counts."],
+  ["17:00","19:00","rest","Rest and dinner","Shower, eat, rest. Nap max 20 minutes, before 17:30."],
+  ["19:00","19:20","study","Study block",n,c],
+  ["19:20","20:00","routine","Small tasks","Assignments due soon, messages, resort emails."],
+  ...night
+];
+const cls = (s,e,k) => [s,e,"class",BUILTIN[k].name,"",k];
+const asdos = (s,e,l) => [s,e,"asdos","Asdos session "+l,"Some weeks only. No asdos? One study block, then rest."];
+const WEEK = {
+  1: [sleep0, ...wake, ...campusMorning("Preview Macro 2: read the chapter headings and one example.","macro"),
+      ["08:30","08:50","study","Study block","Econometrics: rewrite one derivation from memory.","econ"],
+      ["08:50","09:20","rest","Break","Snack, water, walk to J3.4."],
+      cls("09:20","11:00","pkn"), asdos("11:00","12:40","(after PKn)"),
+      ["12:40","13:30","rest","Lunch and rest",""], cls("13:30","16:00","macro"),
+      ...classEvening("Review today's Macro 2 class. Close your notes, write what you remember.","macro")],
+  2: [sleep0, ...wake, ...campusMorning("Preview the Urban and Regional Economics reading.","urban"),
+      asdos("08:30","10:10","(before Urban)"), cls("10:10","12:40","urban"),
+      ["12:40","13:30","rest","Lunch and rest",""], cls("13:30","16:00","econ"),
+      ...classEvening("Econometrics: rewrite one derivation from today, step by step, from memory.","econ")],
+  3: [sleep0, ...wake, ...campusMorning("Preview Micro 2: read one worked example.","micro"),
+      asdos("08:30","10:10","(before Micro 2)"), cls("10:10","12:40","micro"),
+      ["12:40","13:30","rest","Lunch and rest",""], cls("13:30","16:00","pub"),
+      ...classEvening("Review today's Micro 2 class. Try one problem without looking.","micro")],
+  4: [sleep0, ...wake,
+      ["06:00","07:00","rest","Breakfast and free time","Easy morning. No phone in bed."],
+      ["07:00","07:20","study","Study block 1","Macro 2 or Micro 2 homework problems.","macro"],
+      ["07:20","07:30","rest","Break","Stand up, water. No scrolling."],
+      ["07:30","07:50","study","Study block 2","Continue the homework, or one past midterm question.","micro"],
+      ["07:50","09:30","routine","Free, then prepare for campus",""],
+      ["09:30","11:10","move","Travel and settle in","A light look at your Pancasila notes is fine."],
+      cls("11:10","12:50","panc"), ["12:50","13:30","rest","Lunch and rest",""], cls("13:30","16:00","mon"),
+      ...classEvening("Review today's Monetary class. Explain one idea in plain words.","mon")],
+  5: [sleep0, ...wake,
+      ["06:00","07:00","rest","Breakfast and free time",""],
+      ["07:00","07:20","study","Study block 1","Basic Econometrics practice problems.","econ"],
+      ["07:20","07:30","rest","Break",""],
+      ["07:30","07:50","study","Study block 2","Start one assignment due next week.",null],
+      ["07:50","09:00","rest","Free time",""],
+      ["09:00","12:00","work","Resort work","Cashbook, emails, guest messages."],
+      ["12:00","13:00","rest","Lunch",""],
+      ["13:00","16:30","rest","Rest and errands","Nap max 20 minutes."],
+      ["16:30","17:00","walk","Walk","20–30 minutes."],
+      ["17:00","19:00","rest","Rest and dinner",""],
+      ["19:00","19:20","study","Study block","Public Sector or Urban reading: 3 main points from memory.","pub"],
+      ["19:20","22:00","fun","Free evening","Enjoy it. You earned it."], night[2], night[3]],
+  6: [sleep0, ...wake,
+      ["06:00","07:00","rest","Breakfast and free time",""],
+      ["07:00","07:20","study","Study block 1","Practice problems from this week's classes.","macro"],
+      ["07:20","07:30","rest","Break",""],
+      ["07:30","07:50","study","Study block 2","One past midterm question, timed.","micro"],
+      ["07:50","12:00","work","Resort work (if needed)","No work today? Then it's free time."],
+      ["12:00","16:30","fun","Free afternoon","Go out, meet a friend, rest."],
+      ["16:30","17:00","walk","Walk","20–30 minutes."],
+      ["17:00","22:00","fun","Free evening",""], night[2], night[3]],
+  0: [sleep0, wake[0],
+      ["05:15","09:00","rest","Slow morning","Keep the 05:00 wake-up, then take it easy."],
+      ["09:00","16:30","fun","Rest day","Do something you enjoy. No studying today."],
+      ["16:30","17:00","walk","Walk","20–30 minutes."],
+      ["17:00","19:00","rest","Rest and dinner",""],
+      ["19:00","19:20","plan","Weekly reset","List this week's deadlines in To-do. Pick your top 3. Give each a fake deadline 2 days early. Then do the bank check in Money."],
+      ["19:20","20:00","fun","Free time",""], ...night]
+};
+const TYPES = {class:"Class", asdos:"Asdos", study:"Study", event:"Event", free:"Free", work:"Resort", walk:"Walk", fun:"Fun", rest:"Rest", routine:"Routine", move:"Travel", sleep:"Sleep", plan:"Planning"};
+const HARD = new Set(["class","asdos","work","event"]);
+const tc = t => "var(--t-"+(t||"rest")+")";
+
+/* ================= data layer ================= */
+const COLS = ["todos","events","adjust","courses","sets","links","anchors","focuslog"];
+const D = {mode:"loading", db:null, assets:null, cols:{}, loaded:{}};
+COLS.forEach(c => { D.cols[c] = []; D.loaded[c] = false; });
+function wq(fn){
+  Promise.resolve().then(fn).catch(e => {
+    console.warn("save failed", e);
+    toast(e && e.code==="permission-denied" ? "Sync refused this change. Check the Firebase rules." : "Couldn't save. Check your internet and try again.");
+  });
+}
+function persist(){ if(D.mode==="local") store.set("azel.data", D.cols); }
+function put(col, obj){
+  const id = obj.id || newId();
+  const body = clone(obj); delete body.id; body.updatedAt = Date.now();
+  const rec = Object.assign({id}, body);
+  const arr = D.cols[col]; const i = arr.findIndex(x => x.id===id);
+  D.cols[col] = i>=0 ? arr.map(x => x.id===id ? rec : x) : arr.concat([rec]);
+  if(D.mode==="db") wq(() => D.db.collection(col).doc(id).set(body)); else persist();
+  renderAll();
+  return id;
+}
+function del(col, id){
+  D.cols[col] = D.cols[col].filter(x => x.id!==id);
+  if(D.mode==="db") wq(() => D.db.collection(col).doc(id).delete()); else persist();
+  renderAll();
+}
+const byId = (col,id) => D.cols[col].find(x => x.id===id);
+
+/* Firebase project settings. Filled in once Azel's Firebase project exists; null means this device only. */
+const FB = {apiKey:"AIzaSyBVr0QfjtkpUOaiauoyiBIZcoXuxjCm0e0", authDomain:"azel-planner.firebaseapp.com", projectId:"azel-planner", storageBucket:"azel-planner.firebasestorage.app", messagingSenderId:"535920918037", appId:"1:535920918037:web:e1716c17a0b9bcb4d5981c"};
+const FB_VER = "10.12.2";
+const CODE_RE = /^[a-z0-9]{24,64}$/;
+function readCode(){
+  try{
+    const m = location.hash.match(/k=([a-z0-9]{24,64})/i);
+    if(m){ store.set("azel.code", m[1].toLowerCase()); history.replaceState(null, "", location.pathname+location.search); }
+  }catch(e){}
+  const c = store.get("azel.code", null);
+  return c && CODE_RE.test(c) ? c : null;
+}
+function makeCode(){
+  const abc = "abcdefghjkmnpqrstuvwxyz23456789"; const a = new Uint8Array(32); crypto.getRandomValues(a);
+  return Array.from(a, x => abc[x % abc.length]).join("");
+}
+function parseCode(txt){ const m = String(txt||"").trim().toLowerCase().match(/(?:k=)?([a-z0-9]{24,64})\s*$/); return m ? m[1] : null; }
+function loadScript(src){ return new Promise((res, rej) => { const el = document.createElement("script"); el.src = src; el.onload = res; el.onerror = () => rej(new Error("Couldn't load "+src)); document.head.appendChild(el); }); }
+function cutoff(days){ const d = new Date(); d.setDate(d.getDate()-days); return ymd(d); }
+const COL_QUERY = {focuslog: q => q.where("d", ">=", cutoff(60)), anchors: q => q.where("d", ">=", cutoff(7))};
+function announce(root){ window.__planner = {root}; document.dispatchEvent(new CustomEvent("planner-ready", {detail:{root}})); }
+function loadLocal(){
+  D.mode = "local";
+  const saved = store.get("azel.data", null);
+  COLS.forEach(c => { D.cols[c] = saved && Array.isArray(saved[c]) ? saved[c] : []; D.loaded[c] = true; });
+}
+async function initData(){
+  const code = readCode(); D.code = code;
+  if(FB && !code){ $("welcome").hidden = false; loadLocal(); announce(null); renderAll(); return; }
+  if(FB && code){
+    try{
+      await loadScript("https://www.gstatic.com/firebasejs/"+FB_VER+"/firebase-app-compat.js");
+      await loadScript("https://www.gstatic.com/firebasejs/"+FB_VER+"/firebase-firestore-compat.js");
+      firebase.initializeApp(FB);
+      const fs = firebase.firestore();
+      try{ await fs.enablePersistence({synchronizeTabs:true}); }catch(e){ console.warn("offline copy unavailable", e && e.code); }
+      const root = fs.collection("planners").doc(code);
+      D.mode = "db"; D.db = root;
+      root.set({seen:Date.now()}, {merge:true}).catch(e => console.warn(e));
+      const slow = setTimeout(() => { if(COLS.some(c => !D.loaded[c])) toast("Your data is slow to load. Check your internet."); }, 10000);
+      COLS.forEach(c => {
+        const base = root.collection(c);
+        (COL_QUERY[c] ? COL_QUERY[c](base) : base).onSnapshot(qs => {
+          D.cols[c] = qs.docs.map(d => Object.assign({id:d.id}, d.data()));
+          D.loaded[c] = true;
+          if(COLS.every(x => D.loaded[x])) clearTimeout(slow);
+          renderAll();
+        }, err => { console.warn(c, err); D.loaded[c] = true; if(err && err.code==="permission-denied") toast("Sync was refused. Check the Firebase rules."); renderAll(); });
+      });
+      announce(root); renderAll(); return;
+    }catch(e){ console.warn("sync unavailable", e); toast("Can't reach sync right now. Showing this device's copy."); }
+  }
+  loadLocal(); announce(null); renderAll();
+}
+
+/* ================= devices, sync, backup ================= */
+const shareLink = () => D.code ? location.origin+location.pathname+"#k="+D.code : "";
+function renderSyncBtn(){
+  const b = document.querySelector(".syncbtn"); if(!b) return;
+  b.classList.toggle("on", D.mode==="db"); b.classList.toggle("off", !!FB && D.mode!=="db");
+  $("syncLbl").textContent = D.mode==="db" ? "Synced" : FB ? "Offline" : "Sync";
+}
+function syncSheet(){
+  const link = shareLink();
+  const status = D.mode==="db" ? `<p class="hint"><b>Synced.</b> Changes show up on all your devices within a few seconds.</p>`
+    : FB ? `<p class="notice"><b>Not syncing right now.</b> Check your internet and reopen the app. Changes made now stay on this device.</p>`
+    : `<p class="notice"><b>Sync isn't set up yet.</b> Everything is saved on this device for now.</p>`;
+  openP("Devices & sync", `${status}
+    ${link ? `<h3>Open it on your phone or iPad</h3>
+      <p class="muted small">Point the other device's camera at this code and open the link. It connects to the same planner.</p>
+      <div class="qr" id="qrBox"></div>
+      <div class="btn-row"><button class="btn small" type="button" data-act="copylink">Copy link</button></div>
+      <input class="in" id="linkBox" readonly value="${esc(link)}" aria-label="Your planner link">
+      <p class="muted small">This link is the key to your planner. Only send it to yourself.</p>` : ""}
+    <h3>Put it on your home screen</h3>
+    <ul class="small" style="margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px">
+      <li><b>iPhone / iPad:</b> open it in Safari, tap Share, then Add to Home Screen.</li>
+      <li><b>Android:</b> open it in Chrome, tap ⋮, then Add to Home screen or Install app.</li>
+      <li><b>Laptop:</b> in Chrome or Edge, click the install icon in the address bar, or bookmark it.</li>
+    </ul>
+    <h3>Backup</h3>
+    <p class="muted small">Download a copy of everything, or bring in a backup (like the one from the Claude version).</p>
+    <div class="btn-row"><button class="btn small ghost" type="button" data-act="export">Download backup</button><button class="btn small ghost" type="button" data-act="import">Import backup</button></div>
+    <input type="file" id="impIn" accept=".json,application/json" hidden>
+    <div class="notice" id="impMsg" hidden></div>
+    ${D.code ? `<div><button class="linkbtn" type="button" data-act="disconnect">Disconnect this device</button></div>` : ""}`);
+  if(link && typeof window.qrcode==="function"){
+    try{ const q = window.qrcode(0, "M"); q.addData(link); q.make(); $("qrBox").innerHTML = q.createSvgTag({cellSize:4, margin:2, scalable:true}); }
+    catch(e){ $("qrBox").hidden = true; }
+  }
+}
+function exportData(){
+  const data = {app:"azel-planner", v:1, exported:new Date().toISOString(), cols:D.cols, money: window.__moneyExport ? window.__moneyExport() : null};
+  const blob = new Blob([JSON.stringify(data, null, 1)], {type:"application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "azel-planner-backup-"+today()+".json";
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast("Backup downloaded.");
+}
+async function importFile(input){
+  const f = input.files && input.files[0]; input.value = ""; if(!f) return;
+  const msg = m => { const el = $("impMsg"); if(el){ el.hidden = false; el.textContent = m; } else toast(m); };
+  let data;
+  try{ data = JSON.parse(await f.text()); }catch(e){ msg("That file isn't a planner backup."); return; }
+  if(!data || data.app!=="azel-planner" || !data.cols){ msg("That file isn't a planner backup."); return; }
+  let n = 0;
+  COLS.forEach(c => (Array.isArray(data.cols[c]) ? data.cols[c] : []).forEach(r => { if(r && r.id){ put(c, r); n++; } }));
+  if(data.money && window.__moneyImport) n += window.__moneyImport(data.money);
+  msg("Imported "+n+" items.");
+}
+
+/* ================= labels ================= */
+function courseList(){
+  return Object.keys(BUILTIN).map(id => Object.assign({id, builtin:true}, BUILTIN[id]))
+    .concat(D.cols.courses.slice().sort((a,b) => (a.createdAt||0)-(b.createdAt||0))
+      .map(c => ({id:c.id, name:c.name, code:c.code||"", color:c.color||"pink", how:GENERIC_HOW})));
+}
+function labelInfo(id){
+  if(BUILTIN[id]) return Object.assign({id}, BUILTIN[id]);
+  const c = D.cols.courses.find(x => x.id===id);
+  if(c) return {id, name:c.name, code:c.code||"", color:c.color||"pink", how:GENERIC_HOW, custom:true};
+  if(EXTRA[id]) return Object.assign({id}, EXTRA[id]);
+  return {id:"", name:"No label", color:"yellow", how:GENERIC_HOW};
+}
+const isCourse = id => !!(id && (BUILTIN[id] || D.cols.courses.some(c => c.id===id)));
+function courseOptions(sel){ return courseList().map(c => `<option value="${c.id}"${c.id===sel?" selected":""}>${esc(c.name)}</option>`).join(""); }
+function labelOptions(sel, none){
+  return (none ? `<option value=""${!sel?" selected":""}>No label</option>` : "")
+    + `<optgroup label="Courses">${courseOptions(sel)}</optgroup>`
+    + `<optgroup label="Other">${Object.keys(EXTRA).map(k => `<option value="${k}"${k===sel?" selected":""}>${EXTRA[k].name}</option>`).join("")}</optgroup>`;
+}
+function tagHtml(id){ const L = labelInfo(id); const p = PAL[L.color] || PAL.pink; return `<span class="tag" style="--cb:${p[0]};--cf:${p[2]}">${esc(L.name)}</span>`; }
+function classTimes(id){
+  const out = [];
+  [1,2,3,4,5,6,0].forEach(d => WEEK[d].forEach(b => { if(b[2]==="class" && b[5]===id) out.push({dow:d, s:b[0], e:b[1]}); }));
+  return out;
+}
+
+/* ================= schedule for a date ================= */
+function overlay(list, nb){
+  const S = toMin(nb.s), E = toMin(nb.e); const out = [];
+  list.forEach(b => {
+    const bs = toMin(b.s), be = toMin(b.e);
+    if(be<=S || bs>=E || HARD.has(b.type)){ out.push(b); return; }
+    if(bs<S) out.push(Object.assign({}, b, {e:nb.s}));
+    if(be>E) out.push(Object.assign({}, b, {s:nb.e}));
+  });
+  out.push(nb);
+  return out;
+}
+function blocksFor(date){
+  const dow = parseYmd(date).getDay();
+  let list = WEEK[dow].map(b => ({s:b[0], e:b[1], type:b[2], title:b[3], note:b[4]||"", course:b[5]||null}));
+  const adj = D.cols.adjust;
+  adj.forEach(a => {
+    if((a.kind==="move" || a.kind==="cancel") && a.date===date){
+      list = list.map(b => (b.type==="class" && b.course===a.course) ? Object.assign({}, b, {
+        type:"free", title:"Free time",
+        note: labelInfo(a.course).name + (a.kind==="move" ? " moved to "+fmtD(a.newDate)+", "+a.start : " is cancelled") + ". Tap Ideas so this time doesn't go to TikTok.",
+        adj:a.id, course:a.course}) : b);
+    }
+  });
+  adj.forEach(a => {
+    if((a.kind==="move" || a.kind==="extra") && a.newDate===date && a.start && a.end && a.start < a.end){
+      const S = toMin(a.start);
+      const busy = list.some(b => HARD.has(b.type) && toMin(b.e) > S-30 && toMin(b.s) < S);
+      if(S>=30 && !busy) list = overlay(list, {s:fromMin(S-30), e:a.start, type:"move", title:"Get to class", note:"Leave on time. No scrolling on the way."});
+      list = overlay(list, {s:a.start, e:a.end, type:"class", title:labelInfo(a.course).name,
+        note: a.kind==="move" ? "Moved here from "+fmtD(a.date)+" (this time only)"+(a.note?" · "+a.note:"") : (a.note || "Extra class"),
+        course:a.course, adj:a.id, changed:true});
+    }
+  });
+  D.cols.events.forEach(ev => {
+    if(ev.date===date && ev.start){
+      const e = ev.end && ev.end > ev.start ? ev.end : fromMin(Math.min(1440, toMin(ev.start)+60));
+      list = overlay(list, {s:ev.start, e, type:"event", title:ev.title, note:ev.note||"", course:ev.label||null, ev:ev.id});
+    }
+  });
+  adj.forEach(a => {
+    const d = a.kind==="plan" ? a.newDate : a.date;
+    if(a.plan && Array.isArray(a.plan.blocks) && d===date) a.plan.blocks.forEach(pb => { list = overlay(list, Object.assign({}, pb, {planned:a.id})); });
+  });
+  list = list.filter(b => toMin(b.e) > toMin(b.s));
+  list.sort((x,y) => toMin(x.s)-toMin(y.s) || (HARD.has(x.type) ? -1 : 1));
+  return list;
+}
+function findBlock(list, mins){
+  let soft = -1;
+  for(let i=0;i<list.length;i++){ const b = list[i]; if(mins>=toMin(b.s) && mins<toMin(b.e)){ if(HARD.has(b.type)) return i; if(soft<0) soft = i; } }
+  return soft;
+}
+function ideaEligible(b){
+  if(b.planned) return false;
+  const d = toMin(b.e)-toMin(b.s);
+  if(b.type==="free") return true;
+  if(toMin(b.s)<6*60 || toMin(b.s)>=21*60) return false;
+  if(b.type==="fun") return d>=45;
+  return b.type==="rest" && d>=60 && !/lunch|dinner|breakfast|break/i.test(b.title);
+}
+function ideaAttrs(date, b){
+  if(b.planned){ const a = byId("adjust", b.planned); if(a && a.plan) return `data-date="${date}" data-s="${a.plan.s}" data-e="${a.plan.e}" data-adj="${a.id}" data-course="${a.course||""}"`; }
+  return `data-date="${date}" data-s="${b.s}" data-e="${b.e}" data-adj="${b.adj||""}" data-course="${b.course||""}"`;
+}
+
+/* ================= tabs ================= */
+let view = "today";
+const VIEWS = ["today","todo","courses","cal","focus","money"];
+function show(v){
+  view = v;
+  VIEWS.forEach(x => { $("view-"+x).hidden = x!==v; $("tab-"+x).setAttribute("aria-selected", x===v ? "true" : "false"); });
+  window.scrollTo(0,0);
+}
+document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => show(b.dataset.v)));
+
+/* ================= sheet ================= */
+let pClose = null;
+function openP(title, html, onClose){
+  $("pTitle").textContent = title; $("pBody").innerHTML = html; $("pBack").hidden = false; pClose = onClose || null;
+  $("pSheet").scrollTop = 0;
+}
+function closeP(){ $("pBack").hidden = true; $("pBody").innerHTML = ""; if(pClose){ const f = pClose; pClose = null; f(); } }
+$("pClose").addEventListener("click", closeP);
+$("pBack").addEventListener("click", e => { if(e.target===$("pBack")) closeP(); });
+document.addEventListener("keydown", e => { if(e.key!=="Escape") return; if(!$("pBack").hidden) closeP(); else if(!$("review").hidden) endReview(); });
+function twoTap(el, label, fn){
+  if(el.dataset.armed==="1"){ fn(); return; }
+  const old = el.textContent; el.dataset.armed = "1"; el.textContent = label || "Tap again";
+  setTimeout(() => { if(el.isConnected){ el.dataset.armed = ""; el.textContent = old; } }, 3500);
+}
+
+/* ================= TODAY ================= */
+let weekOff = 0, selDate = today();
+function weekDates(){
+  const t = parseYmd(today()); const mon = new Date(t);
+  mon.setDate(t.getDate() - ((t.getDay()+6)%7) + weekOff*7);
+  return Array.from({length:7}, (_,i) => { const d = new Date(mon); d.setDate(mon.getDate()+i); return ymd(d); });
+}
+function renderChips(){
+  const ds = weekDates(); const t = today();
+  $("weekLabel").textContent = weekOff===0 ? "This week" : weekOff===1 ? "Next week" : weekOff===-1 ? "Last week" : fmtD(ds[0])+" – "+fmtD(ds[6]);
+  const chgDates = new Set(); D.cols.adjust.forEach(a => { if(a.date) chgDates.add(a.date); if(a.newDate) chgDates.add(a.newDate); });
+  D.cols.events.forEach(e => chgDates.add(e.date));
+  $("chips").innerHTML = ds.map(s => { const d = parseYmd(s); return `<button class="chip${s===t?" is-today":""}" type="button" data-act="chip" data-date="${s}" aria-pressed="${s===selDate}" aria-label="${fmtLong(s)}">${DAYS[d.getDay()]}<b>${d.getDate()}</b>${chgDates.has(s)?'<span class="cdot"></span>':""}</button>`; }).join("");
+}
+function renderTimeline(){
+  const list = blocksFor(selDate); const now = new Date(); const isToday = selDate===today();
+  const mins = now.getHours()*60+now.getMinutes();
+  const cur = isToday ? findBlock(list, mins) : -1;
+  const shownPlan = new Set();
+  $("timeline").innerHTML = list.map((b,i) => {
+    let meta = "";
+    if(b.type==="class" && BUILTIN[b.course]){ const c = BUILTIN[b.course]; meta = `${c.code} · ${c.room} · ${c.sks} SKS`; }
+    if(b.type==="study" && !b.planned) meta = "15 min focus + 5 min break";
+    const clash = HARD.has(b.type) ? list.filter(o => o!==b && HARD.has(o.type) && toMin(o.s)<toMin(b.e) && toMin(o.e)>toMin(b.s)).map(o => o.title) : [];
+    let acts = "";
+    if(b.type==="study") acts += `<button class="btn small" type="button" data-act="startfocus" data-course="${b.course||""}">Start</button>`;
+    if(ideaEligible(b)) acts += `<button class="btn small yellowbtn" type="button" data-act="ideas" ${ideaAttrs(selDate,b)}>Ideas</button>`;
+    if(b.planned && !shownPlan.has(b.planned)){ shownPlan.add(b.planned); acts += `<span class="tag" style="--cb:var(--yellow-soft);--cf:var(--yellow-ink)">Planned</span><button class="linkbtn" type="button" data-act="ideas" ${ideaAttrs(selDate,b)}>Change plan</button>`; }
+    const past = isToday && toMin(b.e)<=mins;
+    return `<div class="row${past?" past":""}${i===cur?" current":""}${b.type==="free"?" free":""}" style="--tc:${tc(b.type)}">
+      <div class="time"><b>${b.s}</b>${b.e==="24:00"?"":b.e}</div><div class="stripe"></div>
+      <div class="body"><span class="t">${esc(b.title)}${b.changed?` <span class="tag" style="--cb:var(--yellow-soft);--cf:var(--yellow-ink)">Changed</span>`:""}</span>
+      ${b.note?`<span class="n">${esc(b.note)}</span>`:""}${meta?`<span class="meta">${meta}</span>`:""}
+      ${clash.length?`<span class="n neg">Overlaps with ${esc(clash.join(", "))}</span>`:""}
+      ${acts?`<span class="acts">${acts}</span>`:""}</div></div>`;
+  }).join("");
+}
+function adjText(a){
+  const n = labelInfo(a.course).name;
+  if(a.kind==="move") return `<b>${esc(n)}</b> moved: ${fmtD(a.date)} → ${fmtD(a.newDate)}, ${a.start}–${a.end}`;
+  if(a.kind==="cancel") return `<b>${esc(n)}</b> cancelled on ${fmtD(a.date)}`;
+  if(a.kind==="extra") return `Extra <b>${esc(n)}</b>: ${fmtD(a.newDate)}, ${a.start}–${a.end}`;
+  if(a.kind==="plan") return `Free-time plan: ${fmtD(a.newDate)}, ${a.plan.s}–${a.plan.e}`;
+  return "Change";
+}
+function renderChanges(){
+  const t = today();
+  const list = D.cols.adjust.filter(a => (a.date||"")>=t || (a.newDate||"")>=t)
+    .sort((x,y) => ((x.date||x.newDate)<(y.date||y.newDate) ? -1 : 1));
+  $("changes").innerHTML = list.map(a => `<div class="change"><span>${adjText(a)}${a.plan && a.kind!=="plan" ? " · plan added" : ""}</span><button class="linkbtn" type="button" data-act="undoadj" data-id="${a.id}">Undo</button></div>`).join("");
+}
+function renderLegend(){
+  $("legend").innerHTML = ["class","study","event","free","work","walk","fun","rest","sleep"].map(t => `<span style="--tc:${tc(t)}"><i></i>${TYPES[t]}</span>`).join("");
+}
+let nowStudyCourse = null;
+function renderNow(){
+  const now = new Date(); const d = now.getDay(); const t = today();
+  const minsF = now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+  $("clock").textContent = pad(now.getHours())+":"+pad(now.getMinutes());
+  $("dateLine").textContent = DAYS_LONG[d]+", "+now.getDate()+" "+MONTHS[now.getMonth()];
+  const h = now.getHours();
+  $("greet").textContent = h<11 ? "Good morning, Azel" : h<15 ? "Good afternoon, Azel" : h<19 ? "Good evening, Azel" : "Good night soon, Azel";
+  const list = blocksFor(t); const i = findBlock(list, Math.floor(minsF));
+  if(i<0){ $("nowTitle").textContent = "Free time"; return; }
+  const b = list[i]; const a = toMin(b.s), z = toMin(b.e);
+  $("nowCard").style.setProperty("--tc", tc(b.type));
+  $("nowTitle").textContent = b.title;
+  let n = b.note;
+  if(b.type==="class" && BUILTIN[b.course]){ const c = BUILTIN[b.course]; n = c.code+" · "+c.room+" · "+c.sks+" SKS"+(b.changed ? " · "+b.note : ""); }
+  $("nowNote").textContent = n || TYPES[b.type] || "";
+  $("nowBar").style.width = Math.min(100, Math.max(0, (minsF-a)/(z-a)*100))+"%";
+  $("nowRange").textContent = b.s+" – "+(b.e==="24:00" ? "05:00" : b.e);
+  const left = Math.ceil(z-minsF);
+  $("nowLeft").textContent = left>=60 ? Math.floor(left/60)+" h "+(left%60)+" min left" : left+" min left";
+  let acts = "";
+  if(b.type==="study" && timer.mode==="idle") acts += `<button class="btn" type="button" data-act="startfocus" data-course="${b.course||""}">Start this study block</button>`;
+  if(ideaEligible(b)) acts += `<button class="btn yellowbtn" type="button" data-act="ideas" ${ideaAttrs(t,b)}>Ideas for this free time</button>`;
+  if(acts!==lastActs){ $("nowActs").innerHTML = acts; lastActs = acts; }
+  const nx = list[i+1] || blocksFor(ymd(new Date(now.getTime()+864e5)))[1];
+  if(nx) $("nowNext").innerHTML = `<span class="label">Up next</span> &nbsp;<b>${nx.s}</b> &nbsp;${esc(nx.title)}`;
+}
+let lastActs = null;
+
+/* ================= anchors ================= */
+const ANCHORS = [
+  ["wake","Woke up at 05:00","05:00"], ["light","Morning light + water","05:05"], ["walk","Walked 20–30 minutes","16:30"],
+  ["block","Did at least one study block","—"], ["fun","No TikTok today","all day"], ["phone","Phone out of bedroom","22:00"], ["bed","In bed by 22:30","22:30"]
+];
+function renderAnchors(){
+  const day = today();
+  const st = Object.assign({}, byId("anchors", day) || {});
+  if(blocksOn(day)>0) st.block = true;
+  $("anchors").innerHTML = ANCHORS.map(([id,label,t]) => `<div class="anchor${st[id]?" done":""}"><input type="checkbox" id="a-${id}" ${st[id]?"checked":""}><label for="a-${id}">${label}</label><span class="mono">${t}</span></div>`).join("");
+  $("anchorCount").textContent = ANCHORS.filter(a => st[a[0]]).length+" / "+ANCHORS.length;
+  ANCHORS.forEach(([id]) => $("a-"+id).addEventListener("change", ev => { const cur = Object.assign({}, byId("anchors", day) || {}, {id:day, d:day}); delete cur.updatedAt; cur[id] = ev.target.checked; put("anchors", cur); }));
+}
+
+/* ================= TO-DO ================= */
+function dueDate(t){
+  if(!t.due) return null;
+  const parts = String(t.due).split("T"); const d = parseYmd(parts[0]);
+  const tm = (parts[1] || "23:59").split(":").map(Number); d.setHours(tm[0]||0, tm[1]||0, 0, 0); return d;
+}
+function tStatus(t){ if(t.done) return "completed"; const d = dueDate(t); return d && d < new Date() ? "missed" : "ongoing"; }
+function relTime(ms){ const a = Math.abs(ms); const m = Math.round(a/6e4); if(m<60) return m+" min"; const h = Math.round(a/36e5); if(h<48) return h+" h"; return Math.round(a/864e5)+" days"; }
+function dueWhen(t){ const d = dueDate(t); return fmtD(ymd(d))+", "+pad(d.getHours())+":"+pad(d.getMinutes()); }
+function dueText(t){
+  const st = tStatus(t); const d = dueDate(t);
+  if(st==="completed") return "Done"+(t.doneAt ? " "+fmtD(ymd(new Date(t.doneAt))) : "");
+  if(!d) return "No deadline";
+  return st==="missed" ? "Missed · was due "+dueWhen(t) : "Due "+dueWhen(t)+" · in "+relTime(d-new Date());
+}
+const sortByDue = (a,b) => { const x = dueDate(a), y = dueDate(b); if(!x && !y) return (a.createdAt||0)-(b.createdAt||0); if(!x) return 1; if(!y) return -1; return x-y; };
+function todoItem(t){
+  const st = tStatus(t); const d = dueDate(t); const urgent = st==="ongoing" && d && d-new Date() < 864e5;
+  return `<div class="todo ${st}"><button class="check${t.done?" on":""}" type="button" data-act="tcheck" data-id="${t.id}" aria-label="${t.done?"Mark not done":"Mark done"}: ${esc(t.title)}"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></button>
+    <button class="tbody" type="button" data-act="tedit" data-id="${t.id}"><span class="tt">${esc(t.title)}</span>
+    <span class="tmeta">${t.label?tagHtml(t.label):""}<span class="due${st==="missed"?" neg":urgent?" warn":""}">${esc(dueText(t))}</span></span>
+    ${t.desc?`<span class="tdesc">${esc(t.desc)}</span>`:""}</button></div>`;
+}
+let todoTab = "ongoing";
+function renderTodo(){
+  const lab = $("todoFilter").value;
+  const f = lab ? D.cols.todos.filter(t => (t.label||"")===lab) : D.cols.todos;
+  const g = {ongoing:[], missed:[], completed:[]};
+  f.forEach(t => g[tStatus(t)].push(t));
+  g.ongoing.sort(sortByDue); g.missed.sort(sortByDue); g.completed.sort((a,b) => (b.doneAt||0)-(a.doneAt||0));
+  $("todoTabs").innerHTML = [["ongoing","Ongoing"],["missed","Missed"],["completed","Completed"]].map(([k,n]) => `<button type="button" data-act="ttab" data-s="${k}" aria-pressed="${todoTab===k}">${n} <span class="cnt">${g[k].length}</span></button>`).join("");
+  const list = g[todoTab];
+  const empty = {ongoing:"Nothing here. Add a task with its deadline so you never forget it.", missed:"No missed tasks. Keep it like this!", completed:"Nothing completed yet. Tick a task when it's done."}[todoTab];
+  $("todoList").innerHTML = !D.loaded.todos ? `<p class="muted">Loading…</p>` : list.length ? list.map(todoItem).join("") : `<div class="empty">${empty}</div>`;
+  const allMissed = D.cols.todos.filter(t => tStatus(t)==="missed").length;
+  $("todoDot").hidden = !allMissed;
+}
+function fillSelects(){
+  const tf = $("todoFilter"); const v = tf.value;
+  tf.innerHTML = `<option value="">All labels</option>` + labelOptions(v, false).replace(/ selected/g, "");
+  tf.value = v;
+  const cs = $("course"); const cv = cs.value || timer.course || "econ";
+  cs.innerHTML = courseOptions(cv) + `<option value="other">Other / assignment</option>`;
+  cs.value = isCourse(cv) || cv==="other" ? cv : "econ";
+  updateHint();
+}
+$("todoFilter").addEventListener("change", renderTodo);
+function renderDue(){
+  const open = D.cols.todos.filter(t => !t.done);
+  const missed = open.filter(t => tStatus(t)==="missed");
+  const ong = open.filter(t => tStatus(t)==="ongoing").sort(sortByDue).slice(0,3);
+  $("dueCard").innerHTML = `<div class="section-head"><h2>To-do</h2><button class="linkbtn" type="button" data-act="go" data-v="todo">See all</button></div>`
+    + (missed.length ? `<div class="notice">${missed.length} missed task${missed.length>1?"s":""}. Pick one and finish it today. <button class="linkbtn" type="button" data-act="gomissed">Show</button></div>` : "")
+    + (ong.length ? `<div class="todos">${ong.map(todoItem).join("")}</div>` : `<p class="muted">Nothing coming up. Add your deadlines so nothing surprises you.</p>`)
+    + `<div><button class="btn small ghost" type="button" data-act="addtodo">New to-do</button></div>`;
+}
+function todoSheet(t, pre){
+  pre = pre || {};
+  const isNew = !t;
+  t = t || {title:"", label:pre.label||"", desc:"", due: pre.date ? pre.date+"T23:59" : ""};
+  const parts = t.due ? String(t.due).split("T") : ["",""];
+  openP(isNew ? "New to-do" : "Edit to-do", `
+    ${field("tdTitle","What do you need to do?",`<input class="in" id="tdTitle" maxlength="120" value="${esc(t.title)}" placeholder="e.g. Micro 2 problem set 3">`)}
+    ${field("tdLabel","Label",`<select id="tdLabel">${labelOptions(t.label, true)}</select>`)}
+    ${field("tdDesc","Notes (optional)",`<textarea id="tdDesc" maxlength="1500" placeholder="Details, page numbers, what the lecturer said…">${esc(t.desc||"")}</textarea>`)}
+    <div class="grid2">${field("tdDate","Deadline date",`<input class="in" type="date" id="tdDate" value="${parts[0]||""}">`)}${field("tdTime","Time",`<input class="in" type="time" id="tdTime" value="${parts[1]||"23:59"}">`)}</div>
+    <p class="muted small">Leave the date empty if there's no deadline. Tip: set it 2 days before the real one.</p>
+    ${t.eventId && byId("events", t.eventId) ? `<p class="muted small">Linked to a calendar event.</p>` : ""}
+    <div class="notice" id="tdErr" hidden></div>
+    <div class="btn-row"><button class="btn" type="button" data-act="savetodo" data-id="${isNew?"":t.id}">${isNew?"Add to-do":"Save"}</button>${isNew?"":`<button class="btn ghost" type="button" data-act="deltodo" data-id="${t.id}">Delete</button>`}</div>`);
+  if(isNew) setTimeout(() => { const el = $("tdTitle"); if(el) el.focus(); }, 60);
+}
+function saveTodo(id){
+  const title = $("tdTitle").value.trim();
+  if(!title){ $("tdErr").hidden = false; $("tdErr").textContent = "Write what you need to do."; return; }
+  const date = $("tdDate").value; const time = $("tdTime").value || "23:59";
+  const prev = id ? byId("todos", id) : null;
+  const rec = Object.assign({}, prev || {createdAt:Date.now(), done:false}, {title, label:$("tdLabel").value, desc:$("tdDesc").value.trim(), due: date ? date+"T"+time : ""});
+  if(id) rec.id = id;
+  put("todos", rec);
+  if(prev && prev.eventId){ const ev = byId("events", prev.eventId); if(ev && date){ put("events", Object.assign({}, ev, {title, date})); } }
+  closeP(); toast(id ? "Saved." : "Added to your to-do list.");
+}
+
+/* ================= COURSES ================= */
+let openCourse = null, cTab = "todo";
+function countsFor(id){
+  return {
+    todo: D.cols.todos.filter(t => t.label===id && !t.done).length,
+    sets: D.cols.sets.filter(s => s.course===id).length,
+    files: 0,
+    links: D.cols.links.filter(l => l.course===id).length
+  };
+}
+function scheduleText(id){ const t = classTimes(id); return t.length ? t.map(x => DAYS[x.dow]+" "+x.s+"–"+x.e).join(", ") : "No regular class time"; }
+function renderCourses(){
+  if(openCourse && !isCourse(openCourse)) openCourse = null;
+  $("courseHome").hidden = !!openCourse; $("courseDetail").hidden = !openCourse;
+  document.querySelectorAll(".saveinfo").forEach(el => { el.textContent = D.mode==="db" ? "Synced to all your devices." : D.mode==="local" ? "Saved on this device only. Tap Sync at the top to connect your devices." : ""; });
+  if(!openCourse){
+    $("folders").innerHTML = courseList().map(c => {
+      const p = PAL[c.color] || PAL.pink; const n = countsFor(c.id);
+      return `<button class="folder" type="button" data-act="folder" data-id="${c.id}" style="--fb:${p[0]};--fs:${p[1]};--fi:${p[2]}">
+        <span class="fname">${esc(c.name)}</span><span class="fcode">${esc(c.code || "My course")}</span>
+        <span class="fcount">${n.todo} to-do · ${n.sets} set${n.sets===1?"":"s"} · ${n.links} link${n.links===1?"":"s"}</span></button>`;
+    }).join("");
+    return;
+  }
+  const c = labelInfo(openCourse); const p = PAL[c.color] || PAL.pink; const n = countsFor(openCourse);
+  $("cHead").style.cssText = `--fb:${p[0]};--fi:${p[2]}`;
+  $("cHead").innerHTML = `<h2>${esc(c.name)}</h2>
+    <span class="meta">${c.code ? esc(c.code)+" · " : ""}${c.room ? esc(c.room)+" · " : ""}${c.sks ? c.sks+" SKS · " : ""}${scheduleText(openCourse)}</span>
+    <p class="small"><b>How to study it:</b> ${esc(c.how || GENERIC_HOW)}</p>
+    ${c.custom ? `<div class="btn-row"><button class="btn small ghost" type="button" data-act="editcourse">Rename</button><button class="btn small ghost" type="button" data-act="delcourse">Delete course</button></div>` : ""}`;
+  $("cTabs").innerHTML = [["todo","To-do",n.todo],["sets","Study sets",n.sets],["links","Files & links",n.links]].map(([k,l,x]) => `<button type="button" data-act="ctab" data-t="${k}" aria-pressed="${cTab===k}">${l} <span class="cnt">${x}</span></button>`).join("");
+  let h = "";
+  if(cTab==="todo"){
+    const ts = D.cols.todos.filter(t => t.label===openCourse);
+    const open = ts.filter(t => !t.done).sort(sortByDue); const done = ts.filter(t => t.done).sort((a,b) => (b.doneAt||0)-(a.doneAt||0));
+    h = `<div><button class="btn small" type="button" data-act="addtodo" data-label="${openCourse}">Add to-do for this course</button></div>`
+      + (open.length ? `<div class="todos">${open.map(todoItem).join("")}</div>` : `<div class="empty">No open tasks for this course. They also show in your main To-do list.</div>`)
+      + (done.length ? `<details class="card"><summary>Completed (${done.length})</summary><div class="todos">${done.map(todoItem).join("")}</div></details>` : "");
+  }
+  if(cTab==="sets"){
+    const sets = D.cols.sets.filter(s => s.course===openCourse).sort((a,b) => (b.updatedAt||0)-(a.updatedAt||0));
+    h = `<div><button class="btn small" type="button" data-act="newset">New study set</button></div>`
+      + (sets.length ? sets.map(s => {
+        const cards = (s.cards||[]).filter(x => x.f || x.b); const known = cards.filter(x => x.k).length; const unk = cards.length-known;
+        return `<div class="setcard"><div class="section-head"><h3>${esc(s.title)}</h3><span class="muted small">${cards.length} card${cards.length===1?"":"s"}</span></div>
+          <div class="bar" style="--tc:var(--t-class)"><i style="width:${cards.length?known/cards.length*100:0}%"></i></div>
+          <span class="small muted">You know ${known} of ${cards.length}${s.lastReview ? " · last review "+fmtD(ymd(new Date(s.lastReview))) : " · not reviewed yet"}</span>
+          <div class="btn-row">${cards.length?`<button class="btn small bluebtn" type="button" data-act="review" data-id="${s.id}">Review all</button>`:""}${unk && unk<cards.length?`<button class="btn small" type="button" data-act="reviewunk" data-id="${s.id}">Review ${unk} I don't know</button>`:""}<button class="btn small ghost" type="button" data-act="editset" data-id="${s.id}">Edit</button></div></div>`;
+      }).join("") : `<div class="empty">No study sets yet. Make one after each lecture: question on the front, answer on the back.</div>`);
+  }
+  if(cTab==="files"){
+    const files = D.cols.files.filter(f => f.course===openCourse).sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
+    h = (D.assets ? `<div><button class="btn small" type="button" data-act="upload">Upload files</button></div><p class="muted small">PDF, images, text and video up to 20 MB. Word or PowerPoint? Save it as PDF first, or add its Google Drive link in Links.</p>`
+          : `<div class="notice">File upload works when you open this app from your Claude account. For now, add the file's Google Drive link in Links.</div>`)
+      + (files.length ? `<div class="card" style="gap:0;padding:4px 16px">${files.map(f => `<div class="fileitem"><div class="info"><a href="/_blob/${esc(f.asset)}" target="_blank" rel="noopener">${esc(f.name)}</a><span class="small muted">${fileSize(f.size)} · ${f.createdAt?fmtD(ymd(new Date(f.createdAt))):""}</span></div><button class="linkbtn" type="button" data-act="delfile" data-id="${f.id}">Delete</button></div>`).join("")}</div>` : `<div class="empty">No files yet. Upload slides and notes here.</div>`);
+  }
+  if(cTab==="links"){
+    const links = D.cols.links.filter(l => l.course===openCourse).sort((a,b) => (a.createdAt||0)-(b.createdAt||0));
+    h = `<div class="card"><p class="muted small">For slides and notes: put the file in Google Drive, then paste its link here.</p>${field("lkTitle","Name",`<input class="in" id="lkTitle" maxlength="80" placeholder="e.g. Lecture slides folder">`)}${field("lkUrl","Link",`<input class="in" id="lkUrl" inputmode="url" placeholder="https://…">`)}<div><button class="btn small" type="button" data-act="addlink">Add link</button></div></div>`
+      + (links.length ? `<div class="card" style="gap:0;padding:4px 16px">${links.map(l => { let host = ""; try{ host = new URL(l.url).hostname; }catch(e){} return `<div class="linkitem"><div class="info"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || host || l.url)}</a><span class="small muted">${esc(host)}</span></div><button class="linkbtn" type="button" data-act="dellink" data-id="${l.id}">Delete</button></div>`; }).join("")}</div>` : `<div class="empty">No links yet. Add Google Drive files, the class WhatsApp group, or the e-learning page.</div>`);
+  }
+  $("cBody").innerHTML = h;
+}
+const fileSize = b => !b ? "" : b<1024*1024 ? Math.max(1, Math.round(b/1024))+" KB" : (b/1024/1024).toFixed(1)+" MB";
+const FILE_TYPES = {pdf:"application/pdf", png:"image/png", jpg:"image/jpeg", jpeg:"image/jpeg", gif:"image/gif", webp:"image/webp", txt:"text/plain", md:"text/markdown", csv:"text/csv", json:"application/json", mp4:"video/mp4", webm:"video/webm"};
+function courseSheet(c){
+  const isNew = !c; c = c || {name:"", code:"", color:"pink"};
+  openP(isNew ? "Add a course" : "Rename course", `
+    ${field("coName","Course name",`<input class="in" id="coName" maxlength="60" value="${esc(c.name)}" placeholder="e.g. Academic English">`)}
+    ${field("coCode","Code (optional)",`<input class="in" id="coCode" maxlength="20" value="${esc(c.code||"")}" placeholder="e.g. EKO61000">`)}
+    ${field("coColor","Color",`<select id="coColor">${Object.keys(PAL).map(k => `<option value="${k}"${k===c.color?" selected":""}>${k[0].toUpperCase()+k.slice(1)}</option>`).join("")}</select>`)}
+    <div class="notice" id="coErr" hidden></div>
+    <button class="btn" type="button" data-act="savecourse" data-id="${isNew?"":c.id}">${isNew?"Add course":"Save"}</button>`);
+}
+
+/* ================= study sets ================= */
+let editingSet = null;
+function setSheet(set, course){
+  const isNew = !set;
+  editingSet = set ? clone(set) : {title:"", course, cards:[{id:newId(),f:"",b:""},{id:newId(),f:"",b:""},{id:newId(),f:"",b:""}], createdAt:Date.now()};
+  openP(isNew ? "New study set" : "Edit study set", `
+    ${field("ssTitle","Title",`<input class="in" id="ssTitle" maxlength="80" value="${esc(editingSet.title)}" placeholder="e.g. Chapter 3: Money supply">`)}
+    <p class="muted small">Front: a question or term. Back: the answer. Short is better.</p>
+    <div id="ssCards" class="section"></div>
+    <div><button class="btn small ghost" type="button" data-act="addcard">Add a card</button></div>
+    <div class="notice" id="ssErr" hidden></div>
+    <div class="btn-row"><button class="btn" type="button" data-act="saveset">Save set</button>${isNew?"":`<button class="btn ghost" type="button" data-act="delset" data-id="${editingSet.id}">Delete set</button>`}</div>`,
+    () => { editingSet = null; });
+  renderCardRows();
+}
+function renderCardRows(){
+  $("ssCards").innerHTML = editingSet.cards.map((c,i) => `<div class="cardrow" data-cid="${c.id}"><div class="cardrow-head"><span class="label">Card ${i+1}</span><button type="button" class="linkbtn" data-act="rmcard" data-cid="${c.id}">Remove</button></div>
+    <textarea class="cf" rows="2" aria-label="Card ${i+1} front" placeholder="Front: question or term">${esc(c.f)}</textarea>
+    <textarea class="cb" rows="2" aria-label="Card ${i+1} back" placeholder="Back: answer">${esc(c.b)}</textarea></div>`).join("");
+}
+function syncCards(){
+  editingSet.cards = editingSet.cards.map(c => { const row = document.querySelector(`.cardrow[data-cid="${c.id}"]`); return row ? Object.assign({}, c, {f:row.querySelector(".cf").value, b:row.querySelector(".cb").value}) : c; });
+}
+let rv = null;
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
+function startReview(id, onlyUnknown){
+  const set = byId("sets", id); if(!set) return;
+  let cards = (set.cards||[]).filter(c => c.f || c.b);
+  if(onlyUnknown) cards = cards.filter(c => !c.k);
+  if(!cards.length){ toast("No cards to review."); return; }
+  rv = {id, queue:shuffle(cards.map(c => c.id)), total:cards.length, known:new Set(), first:{}, flipped:false};
+  $("review").hidden = false; renderReview();
+}
+function renderReview(){
+  const set = byId("sets", rv.id); if(!set){ endReview(); return; }
+  $("rvTitle").textContent = set.title;
+  if(!rv.queue.length){
+    const k = Object.values(rv.first).filter(Boolean).length;
+    $("rvProg").textContent = "Finished";
+    $("rvBody").innerHTML = `<div class="rv-done"><h2>Done!</h2><p>You knew <b>${k}</b> of ${rv.total} card${rv.total===1?"":"s"} the first time.</p>
+      <p class="muted">${k===rv.total ? "Perfect. Review this set again in 3 days." : "The cards you missed came back until you got them. Review this set again tomorrow."}</p>
+      <div class="btn-row"><button class="btn" type="button" data-act="rvclose">Finish</button></div></div>`;
+    return;
+  }
+  const c = set.cards.find(x => x.id===rv.queue[0]);
+  if(!c){ rv.queue.shift(); renderReview(); return; }
+  $("rvProg").textContent = rv.known.size+" of "+rv.total+" known";
+  $("rvBody").innerHTML = `<button type="button" class="flip" data-act="rvflip" aria-label="Flip the card">
+      <span class="face front"><span class="label">Front</span><span class="ftxt">${esc(c.f)}</span><span class="muted small">Say the answer in your head, then tap to flip</span></span>
+      <span class="face back"><span class="label">Back</span><span class="ftxt">${esc(c.b)}</span></span></button>
+    <div class="rv-btns" id="rvBtns" hidden><button class="btn pinkbtn" type="button" data-act="rvno">I don't know</button><button class="btn bluebtn" type="button" data-act="rvyes">I know</button></div>`;
+}
+function answer(knew){
+  const cid = rv.queue.shift();
+  if(!(cid in rv.first)) rv.first[cid] = knew;
+  if(knew) rv.known.add(cid); else rv.queue.splice(Math.min(3, rv.queue.length), 0, cid);
+  renderReview();
+}
+function endReview(){
+  if(rv){
+    const set = byId("sets", rv.id);
+    if(set && Object.keys(rv.first).length){
+      const cards = set.cards.map(c => (c.id in rv.first) ? Object.assign({}, c, {k: rv.first[c.id] ? 1 : 0}) : c);
+      put("sets", Object.assign({}, set, {cards, lastReview:Date.now()}));
+    }
+  }
+  rv = null; $("review").hidden = true;
+}
+
+/* ================= CALENDAR ================= */
+let calY = new Date().getFullYear(), calM = new Date().getMonth(), calSel = today();
+function renderCal(){
+  $("calTitle").textContent = MONTHS[calM]+" "+calY;
+  const first = new Date(calY, calM, 1); const off = (first.getDay()+6)%7;
+  const start = new Date(first); start.setDate(1-off);
+  const marks = {}; const mk = (d,k) => { if(!d) return; (marks[d] = marks[d] || {})[k] = true; };
+  D.cols.todos.forEach(t => { if(t.due && !t.done) mk(String(t.due).slice(0,10), "todo"); });
+  D.cols.events.forEach(e => mk(e.date, "event"));
+  D.cols.adjust.forEach(a => { if(a.kind!=="plan"){ mk(a.date, "chg"); mk(a.newDate, "chg"); } });
+  const t = today();
+  let h = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for(let i=0;i<42;i++){
+    const d = new Date(start); d.setDate(start.getDate()+i); const s = ymd(d); const m = marks[s] || {};
+    h += `<button type="button" class="cal-cell${d.getMonth()!==calM?" out":""}${s===t?" today":""}${s===calSel?" sel":""}" data-act="calday" data-date="${s}" aria-label="${fmtLong(s)}"><span class="dn">${d.getDate()}</span><span class="dots">${m.todo?'<i class="d-todo"></i>':""}${m.event?'<i class="d-event"></i>':""}${m.chg?'<i class="d-chg"></i>':""}</span></button>`;
+  }
+  $("calGrid").innerHTML = h;
+  renderCalDay();
+}
+function renderCalDay(){
+  const s = calSel;
+  const evs = D.cols.events.filter(e => e.date===s).sort((a,b) => (a.start||"99").localeCompare(b.start||"99"));
+  const tds = D.cols.todos.filter(t => t.due && String(t.due).slice(0,10)===s).sort(sortByDue);
+  const chg = D.cols.adjust.filter(a => a.kind!=="plan" && (a.date===s || a.newDate===s));
+  const cl = blocksFor(s).filter(b => ["class","asdos","work","free"].includes(b.type));
+  $("calDay").innerHTML = `<h2>${fmtLong(s)}</h2>
+    <div class="btn-row"><button class="btn small bluebtn" type="button" data-act="addevent" data-date="${s}">Add event</button><button class="btn small" type="button" data-act="addtodo" data-date="${s}">Add to-do</button><button class="btn small yellowbtn" type="button" data-act="chg" data-date="${s}">Change schedule</button></div>
+    <h3>Events</h3>${evs.length ? `<div>${evs.map(e => `<div class="dayitem"><span class="tm">${e.start ? e.start+(e.end?"–"+e.end:"") : "All day"}</span><span style="min-width:0"><button type="button" data-act="editevent" data-id="${e.id}">${esc(e.title)}</button> ${e.label?tagHtml(e.label):""}${e.note?`<br><span class="small muted">${esc(e.note)}</span>`:""}</span></div>`).join("")}</div>` : `<p class="muted small">No events.</p>`}
+    <h3>Due this day</h3>${tds.length ? `<div class="todos">${tds.map(todoItem).join("")}</div>` : `<p class="muted small">No deadlines.</p>`}
+    ${chg.length ? `<h3>Schedule changes</h3><div class="changes">${chg.map(a => `<div class="change"><span>${adjText(a)}</span></div>`).join("")}</div>` : ""}
+    <h3>Classes and work</h3>${cl.length ? `<div>${cl.map(b => `<div class="dayitem"><span class="tm">${b.s}–${b.e}</span><span>${esc(b.title)}${b.changed?" (changed)":""}</span></div>`).join("")}</div>` : `<p class="muted small">Nothing scheduled.</p>`}`;
+}
+function eventSheet(ev, pre){
+  pre = pre || {}; const isNew = !ev;
+  ev = ev || {title:"", date:pre.date || calSel, start:"", end:"", label:"", note:""};
+  const linked = ev.todoId && byId("todos", ev.todoId);
+  openP(isNew ? "New event" : "Edit event", `
+    ${field("evTitle","Event",`<input class="in" id="evTitle" maxlength="100" value="${esc(ev.title)}" placeholder="e.g. UKMP meeting, Macro quiz">`)}
+    ${field("evDate","Date",`<input class="in" type="date" id="evDate" value="${ev.date}">`)}
+    <div class="grid2">${field("evStart","Start",`<input class="in" type="time" id="evStart" value="${ev.start||""}">`)}${field("evEnd","End",`<input class="in" type="time" id="evEnd" value="${ev.end||""}">`)}</div>
+    <p class="muted small">Events with a start time also show in your timetable.</p>
+    ${field("evLabel","Label",`<select id="evLabel">${labelOptions(ev.label, true)}</select>`)}
+    ${field("evNote","Note (optional)",`<input class="in" id="evNote" maxlength="200" value="${esc(ev.note||"")}" placeholder="Room, what to bring…">`)}
+    ${linked ? `<p class="muted small">Linked to the to-do “${esc(linked.title)}”.</p>` : `<label class="anchor" style="border:0;padding:0"><input type="checkbox" id="evTodo"${isNew?" checked":""}><span>Also add it to my to-do list</span></label>`}
+    <div class="notice" id="evErr" hidden></div>
+    <div class="btn-row"><button class="btn" type="button" data-act="saveevent" data-id="${isNew?"":ev.id}">${isNew?"Add event":"Save"}</button>${isNew?"":`<button class="btn ghost" type="button" data-act="delevent" data-id="${ev.id}">Delete</button>`}</div>`);
+  if(isNew) setTimeout(() => { const el = $("evTitle"); if(el) el.focus(); }, 60);
+}
+function saveEvent(id){
+  const err = m => { $("evErr").hidden = false; $("evErr").textContent = m; };
+  const title = $("evTitle").value.trim(), date = $("evDate").value, start = $("evStart").value, end = $("evEnd").value;
+  if(!title) return err("Give the event a name.");
+  if(!date) return err("Pick a date.");
+  if(end && !start) return err("Add a start time too, or clear the end time.");
+  if(start && end && end <= start) return err("The end time must be after the start time.");
+  const prev = id ? byId("events", id) : null;
+  const eid = id || newId();
+  const rec = Object.assign({}, prev || {createdAt:Date.now()}, {id:eid, title, date, start, end, label:$("evLabel").value, note:$("evNote").value.trim()});
+  const linked = prev && prev.todoId && byId("todos", prev.todoId);
+  if(linked) put("todos", Object.assign({}, linked, {title, label:rec.label, due:date+"T"+(start||"23:59")}));
+  else if($("evTodo") && $("evTodo").checked){
+    rec.todoId = put("todos", {title, label:rec.label, desc:rec.note, due:date+"T"+(start||"23:59"), done:false, createdAt:Date.now(), eventId:eid});
+  }
+  put("events", rec);
+  calSel = date; const d = parseYmd(date); calY = d.getFullYear(); calM = d.getMonth();
+  closeP(); toast(id ? "Event saved." : "Event added"+(rec.todoId && !prev ? " and put in your to-do list." : "."));
+}
+
+/* ================= schedule changes ================= */
+let chKind = "move";
+function chSheet(pre){
+  pre = pre || {}; chKind = "move";
+  openP("Change schedule", `
+    <div class="segs" id="chKinds">${[["move","Class moved"],["cancel","Cancelled"],["extra","Extra class"]].map(([k,n]) => `<button type="button" data-act="chkind" data-k="${k}" aria-pressed="${k==="move"}">${n}</button>`).join("")}</div>
+    ${field("chCourse","Course",`<select id="chCourse">${courseOptions(pre.course || "mon")}</select>`)}
+    <div id="chOrig" class="section">${field("chDate","Date of the normal class",`<input class="in" type="date" id="chDate">`)}<p class="muted small" id="chInfo"></p></div>
+    <div id="chNew" class="section">${field("chNewDate","New date",`<input class="in" type="date" id="chNewDate">`)}
+      <div class="grid2">${field("chStart","Start",`<input class="in" type="time" id="chStart">`)}${field("chEnd","End",`<input class="in" type="time" id="chEnd">`)}</div></div>
+    ${field("chNote","Note (optional)",`<input class="in" id="chNote" maxlength="80" placeholder="e.g. Room A2.4, lecturer has a meeting">`)}
+    <p class="hint">Only this date changes. The next week goes back to normal by itself.</p>
+    <div class="notice" id="chErr" hidden></div>
+    <button class="btn" type="button" data-act="savechg">Save change</button>`);
+  chPre = pre.date || selDate;
+  chFill();
+}
+let chPre = null;
+function chFill(){
+  const course = $("chCourse").value; const times = classTimes(course);
+  $("chOrig").hidden = chKind==="extra"; $("chNew").hidden = chKind==="cancel";
+  document.querySelectorAll("#chKinds button").forEach(b => b.setAttribute("aria-pressed", b.dataset.k===chKind));
+  const base = chPre || today();
+  if(times.length){
+    const bd = parseYmd(base); const mon = new Date(bd); mon.setDate(bd.getDate()-((bd.getDay()+6)%7));
+    const tt = times.find(x => x.dow===bd.getDay()) || times[0];
+    const d = new Date(mon); d.setDate(mon.getDate()+((tt.dow+6)%7));
+    $("chDate").value = ymd(d);
+    $("chInfo").textContent = "Normal time: "+times.map(x => DAYS[x.dow]+" "+x.s+"–"+x.e).join(", ");
+    if(!$("chNewDate").value) $("chNewDate").value = chKind==="extra" ? base : ymd(d);
+    $("chStart").value = tt.s; $("chEnd").value = tt.e; $("chStart").dataset.dur = toMin(tt.e)-toMin(tt.s);
+  } else {
+    $("chDate").value = base; $("chInfo").textContent = "This course has no regular class time. Use Extra class for one-off sessions.";
+    if(!$("chNewDate").value) $("chNewDate").value = base;
+  }
+}
+function saveChg(){
+  const err = m => { $("chErr").hidden = false; $("chErr").textContent = m; };
+  const course = $("chCourse").value; const name = labelInfo(course).name;
+  const rec = {kind:chKind, course, note:$("chNote").value.trim(), createdAt:Date.now()};
+  if(chKind!=="extra"){
+    const date = $("chDate").value; if(!date) return err("Pick the date of the normal class.");
+    const dow = parseYmd(date).getDay();
+    if(!classTimes(course).some(x => x.dow===dow)) return err(name+" has no class on "+DAYS_LONG[dow]+". "+$("chInfo").textContent);
+    if(D.cols.adjust.some(a => (a.kind==="move"||a.kind==="cancel") && a.course===course && a.date===date)) return err("There's already a change for this class on "+fmtD(date)+". Undo it first.");
+    rec.date = date;
+  }
+  if(chKind!=="cancel"){
+    const nd = $("chNewDate").value, s = $("chStart").value, e = $("chEnd").value;
+    if(!nd || !s || !e) return err("Fill in the new date, start and end time.");
+    if(e <= s) return err("The end time must be after the start time.");
+    if(chKind==="move" && nd===rec.date && s===classTimes(course).find(x => x.dow===parseYmd(nd).getDay()).s) return err("The new time is the same as the normal time.");
+    rec.newDate = nd; rec.start = s; rec.end = e;
+  }
+  put("adjust", rec);
+  closeP();
+  const focusDate = rec.newDate || rec.date;
+  selDate = rec.date || rec.newDate; syncWeek();
+  renderAll();
+  toast(chKind==="extra" ? "Extra class added on "+fmtD(focusDate)+"." : fmtD(rec.date)+" is free now. Tap Ideas for good things to do.");
+}
+function syncWeek(){
+  const t = parseYmd(today()); const s = parseYmd(selDate);
+  const monT = new Date(t); monT.setDate(t.getDate()-((t.getDay()+6)%7));
+  const monS = new Date(s); monS.setDate(s.getDate()-((s.getDay()+6)%7));
+  weekOff = Math.round((monS-monT)/(7*864e5));
+}
+
+/* ================= free-time ideas ================= */
+const focusLen = () => store.get("azel.len", 15) === 25 ? 25 : 15;
+function getIdeas(ctx){
+  const mins = toMin(ctx.e)-toMin(ctx.s); const now = new Date();
+  const open = D.cols.todos.filter(t => !t.done);
+  const missed = open.filter(t => tStatus(t)==="missed").sort(sortByDue);
+  const soon = open.filter(t => tStatus(t)==="ongoing" && dueDate(t) && dueDate(t)-now < 5*864e5).sort(sortByDue);
+  const nodue = open.filter(t => !t.due);
+  const day = blocksFor(ctx.date);
+  const S = toMin(ctx.s), E = toMin(ctx.e);
+  const isCls = b => b.type==="class" || b.type==="asdos";
+  const campus = day.some(b => isCls(b) && toMin(b.e)<=S+5 && toMin(b.e)>=S-120) || day.some(b => isCls(b) && toMin(b.s)>=E-5 && toMin(b.s)<=E+90);
+  const ideas = [];
+  const short = s => s.length>32 ? s.slice(0,30)+"…" : s;
+  missed.slice(0,2).forEach((t,i) => ideas.push({score:100-i, todo:t.id, course:isCourse(t.label)?t.label:null, short:short(t.title),
+    title:"Finish: "+t.title, detail:"This was due "+dueWhen(t)+". Late is better than never. Give it one focus block now."}));
+  soon.slice(0,2).forEach((t,i) => ideas.push({score:90-i, todo:t.id, course:isCourse(t.label)?t.label:null, short:short(t.title),
+    title:"Get ahead: "+t.title, detail:"Due "+dueWhen(t)+" (in "+relTime(dueDate(t)-now)+"). Start now so it's not a night-before panic."}));
+  const a = ctx.adj ? byId("adjust", ctx.adj) : null;
+  if(a && a.kind==="move") ideas.push({score:76, course:a.course, short:labelInfo(a.course).name+" prep",
+    title:"Prepare for "+labelInfo(a.course).name+" on "+fmtD(a.newDate), detail:"The class is now "+fmtD(a.newDate)+" at "+a.start+". Read the slides and write 3 questions to ask in class."});
+  const setsWith = D.cols.sets.map(s => ({s, unk:(s.cards||[]).filter(c => (c.f||c.b) && !c.k).length})).filter(x => x.unk>0);
+  setsWith.sort((x,y) => (y.s.course===ctx.course) - (x.s.course===ctx.course)).slice(0,2).forEach((x,i) => ideas.push({score:(x.s.course===ctx.course?80:55)-i, set:x.s.id, course:x.s.course, short:"Flashcards: "+short(x.s.title),
+    title:"Review flashcards: "+x.s.title, detail:x.unk+" card"+(x.unk>1?"s":"")+" you don't know yet. Tap I know / I don't know."}));
+  if(ctx.course && isCourse(ctx.course) && !D.cols.sets.some(s => s.course===ctx.course)) ideas.push({score:62, course:ctx.course, makeSet:true, short:labelInfo(ctx.course).name+" flashcards",
+    title:"Make flashcards for "+labelInfo(ctx.course).name, detail:"Turn your last lecture into 10 cards: question on the front, answer on the back. Making them is already active recall."});
+  if(!missed.length && !soon.length && nodue.length) ideas.push({score:64, todo:nodue[0].id, course:isCourse(nodue[0].label)?nodue[0].label:null, short:short(nodue[0].title),
+    title:"Work on: "+nodue[0].title, detail:"It has no deadline, which is exactly why it keeps waiting. One focus block today."});
+  if(mins>=60 && campus) ideas.push({score:50, library:true, title:"Library session", detail:"Go to the library. Phone in your bag. "+Math.max(1, Math.min(4, Math.floor((mins-15)/(focusLen()+5))))+" focus blocks fit here."});
+  if(mins>=45) ideas.push({score:45, walk:true, title:"Walk 20 minutes", detail: campus ? "Walk around campus first. It wakes your brain up for studying." : "Walk now. It counts as today's walk and frees your evening."});
+  if(S<=13*60+30 && E>=11*60+30) ideas.push({score:43, lunch:true, title:"Eat a real lunch", detail:"Proper food, not snacks. Sit with a friend if you can."});
+  if(!open.length) ideas.push({score:40, title:"Plan your week", detail:"Write every deadline for the next 7 days in To-do. It takes 10 minutes and stops surprises."});
+  ideas.push({score:20, title:"Rest without your phone", detail:"Music, stretching, or close your eyes for 20 minutes. Phone face down, out of reach."});
+  return ideas.sort((x,y) => y.score-x.score).slice(0,5);
+}
+function buildPlan(ctx, ideas){
+  let t = toMin(ctx.s); const E = toMin(ctx.e); const L = focusLen(); const out = [];
+  const push = (a,b,type,title,note,course) => out.push({s:fromMin(a), e:fromMin(b), type, title, note:note||"", course:course||null});
+  const tasks = ideas.filter(i => i.todo || i.set || (i.course && !i.makeSet) || i.makeSet);
+  const lunch = ideas.find(i => i.lunch), walk = ideas.find(i => i.walk);
+  if(lunch && E-t>=75){ push(t,t+30,"rest","Lunch","Real food. Phone stays in your bag."); t += 30; }
+  else if(E-t>=50){ push(t,t+10,"routine","Settle in","Water, find a quiet seat, phone in your bag."); t += 10; }
+  let n = 0, walked = false;
+  while(n<4 && tasks.length && E-t>=L){
+    if(n===2 && walk && !walked && E-t>=20+L){ push(t,t+20,"walk","Walk","20 minutes of fresh air, then back."); t += 20; walked = true; continue; }
+    const k = tasks[n % tasks.length];
+    push(t,t+L,"study","Focus: "+k.short, k.title, k.course); t += L; n++;
+    if(E-t>=5){ push(t,t+5,"rest","Break","Stand up, drink water. No scrolling."); t += 5; }
+  }
+  if(walk && !walked && E-t>=20){ push(t,t+20,"walk","Walk","20 minutes outside."); t += 20; }
+  if(E-t>0) push(t,E,"fun","Free time","Your choice. Anything except TikTok.");
+  return out;
+}
+let ideaCtx = null, ideaPlan = null;
+function ideasSheet(ctx){
+  ideaCtx = ctx;
+  const ideas = getIdeas(ctx); ideaPlan = buildPlan(ctx, ideas);
+  const mins = toMin(ctx.e)-toMin(ctx.s);
+  const a = ctx.adj ? byId("adjust", ctx.adj) : null; const hasPlan = a && a.plan;
+  openP("Free time ideas", `
+    <p class="muted"><b style="color:var(--ink)">${fmtD(ctx.date)} · ${ctx.s}–${ctx.e}</b> · ${durTxt(mins)} free</p>
+    <div class="ideas">${ideas.map((i,k) => `<div class="idea"><span class="num">${k+1}</span><div><b>${esc(i.title)}</b><p>${esc(i.detail)}</p>
+      ${i.set ? `<div class="btn-row"><button class="btn small bluebtn" type="button" data-act="review" data-id="${i.set}">Review now</button></div>`
+        : i.makeSet ? `<div class="btn-row"><button class="btn small" type="button" data-act="ideaset" data-course="${i.course}">Make a set</button></div>`
+        : (i.todo || i.course) ? `<div class="btn-row"><button class="btn small" type="button" data-act="startfocus" data-course="${i.course||""}">Start focus now</button></div>` : ""}</div></div>`).join("")}</div>
+    <h3>Mini plan for this time</h3>
+    <div class="plan">${ideaPlan.map(p => `<div class="pr" style="--tc:${tc(p.type)}"><span class="tm">${p.s}–${p.e}</span><i></i><span>${esc(p.title)}</span></div>`).join("")}</div>
+    <div class="btn-row"><button class="btn" type="button" data-act="useplan">Put this plan in my timetable</button>${hasPlan?`<button class="btn ghost" type="button" data-act="clearplan">Remove my plan</button>`:""}</div>
+    <p class="notice">Phone stays in your bag. If you catch yourself opening TikTok, close it and do idea 1.</p>`);
+}
+function usePlan(){
+  const ctx = ideaCtx; const plan = {s:ctx.s, e:ctx.e, blocks:ideaPlan};
+  const a = ctx.adj ? byId("adjust", ctx.adj) : null;
+  if(a) put("adjust", Object.assign({}, a, {plan}));
+  else {
+    const ex = D.cols.adjust.find(x => x.kind==="plan" && x.newDate===ctx.date && x.plan && x.plan.s===ctx.s);
+    put("adjust", Object.assign({}, ex || {kind:"plan", createdAt:Date.now()}, {newDate:ctx.date, plan}));
+  }
+  closeP(); selDate = ctx.date; syncWeek(); renderAll(); toast("Plan added to your timetable.");
+}
+function clearPlan(){
+  const a = ideaCtx.adj ? byId("adjust", ideaCtx.adj) : null; if(!a) return;
+  if(a.kind==="plan") del("adjust", a.id);
+  else { const c = Object.assign({}, a); delete c.plan; put("adjust", c); }
+  closeP(); toast("Plan removed.");
+}
+
+/* ================= FOCUS ================= */
+const getLog = () => D.cols.focuslog.slice().sort((a,b) => (a.ts||0)-(b.ts||0));
+const blocksOn = date => getLog().filter(x => x.d===date).length;
+function streak(){
+  const days = new Set(getLog().map(x => x.d)); const d = new Date(); let n = 0;
+  if(!days.has(ymd(d))) d.setDate(d.getDate()-1);
+  while(days.has(ymd(d))){ n++; d.setDate(d.getDate()-1); }
+  return n;
+}
+function renderStats(){
+  const t = today(); const items = getLog().filter(x => x.d===t);
+  $("stToday").textContent = items.length;
+  $("stMins").textContent = items.reduce((a,x) => a+x.m, 0);
+  $("stStreak").textContent = streak();
+  $("log").innerHTML = items.length ? items.slice().reverse().map(x => `<div class="log-item"><div class="top"><b>${esc(x.c)}</b><span class="muted">${x.t} · ${x.m} min</span></div>${x.n?`<p>${esc(x.n)}</p>`:`<p class="muted">No note written.</p>`}</div>`).join("")
+    : `<div class="empty">No blocks yet today. One 15-minute block is a good day.</div>`;
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const missY = getLog().length>0 && blocksOn(ymd(y))===0 && items.length===0;
+  $("missNotice").hidden = !missY;
+  if(missY) $("missNotice").innerHTML = "<b>Yesterday was a miss. That's okay.</b> Today, just do one 15-minute block. Never miss twice in a row.";
+}
+const C_LEN = 2*Math.PI*104;
+$("ringProg").style.strokeDasharray = C_LEN;
+let timer = store.get("azel.timer", {mode:"idle"});
+let lenMin = focusLen();
+let audio = null, wakeLock = null;
+function setLen(m){
+  lenMin = m; store.set("azel.len", m);
+  $("len15").setAttribute("aria-pressed", m===15); $("len25").setAttribute("aria-pressed", m===25);
+  if(timer.mode==="idle") paintTimer();
+}
+$("len15").addEventListener("click", () => timer.mode==="idle" && setLen(15));
+$("len25").addEventListener("click", () => timer.mode==="idle" && setLen(25));
+function updateHint(){ const v = $("course").value; $("courseHint").innerHTML = "<b>How:</b> "+esc(v==="other" ? "Pick one small piece of the task. Write the first lines before you look anything up." : labelInfo(v).how || GENERIC_HOW); }
+$("course").addEventListener("change", updateHint);
+function beep(times){
+  try{ if(!audio) return; const t0 = audio.currentTime;
+    for(let i=0;i<times;i++){ const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
+      const s = t0+i*0.35; g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(0.3, s+0.02); g.gain.exponentialRampToValueAtTime(0.0001, s+0.28); o.start(s); o.stop(s+0.3); }
+  }catch(e){}
+  try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch(e){}
+}
+async function keepAwake(on){
+  try{ if(on && navigator.wakeLock && !wakeLock) wakeLock = await navigator.wakeLock.request("screen"); if(!on && wakeLock){ await wakeLock.release(); wakeLock = null; } }catch(e){ wakeLock = null; }
+}
+function initAudio(){ try{ audio = audio || new (window.AudioContext||window.webkitAudioContext)(); audio.resume && audio.resume(); }catch(e){} }
+const saveTimer = () => store.set("azel.timer", timer);
+function startFocus(){
+  initAudio(); const now = Date.now();
+  timer = {mode:"focus", start:now, end:now+lenMin*60000, len:lenMin, course:$("course").value};
+  saveTimer(); keepAwake(true); paintTimer(); lastActs = null; renderNow();
+}
+function startBreak(){ const now = Date.now(); timer = {mode:"break", start:now, end:now+5*60000, len:5, course:timer.course}; saveTimer(); paintTimer(); }
+function stopTimer(){ timer = {mode:"idle"}; saveTimer(); keepAwake(false); paintTimer(); lastActs = null; renderNow(); }
+$("startBtn").addEventListener("click", () => {
+  if(timer.mode==="idle") startFocus();
+  else if(timer.mode==="recall"){
+    const cname = timer.course==="other" ? "Other / assignment" : labelInfo(timer.course).name;
+    const now = new Date();
+    put("focuslog", {d:ymd(now), t:pad(now.getHours())+":"+pad(now.getMinutes()), c:cname, m:timer.len, n:$("recallText").value.trim(), ts:Date.now()});
+    $("recallText").value = "";
+    renderStats(); renderAnchors(); initAudio(); startBreak();
+  }
+});
+$("stopBtn").addEventListener("click", stopTimer);
+function paintTimer(){
+  const now = Date.now();
+  if((timer.mode==="focus" || timer.mode==="break") && now>=timer.end){
+    if(timer.mode==="focus"){ timer = {mode:"recall", len:timer.len, course:timer.course}; saveTimer(); beep(3); }
+    else { timer = {mode:"idle"}; saveTimer(); beep(2); keepAwake(false); }
+  }
+  const m = timer.mode; let remain, frac = 0;
+  if(m==="focus" || m==="break"){ remain = Math.max(0, timer.end-now); frac = 1-remain/(timer.end-timer.start); }
+  else remain = m==="recall" ? 0 : lenMin*60000;
+  const s = Math.ceil(remain/1000);
+  $("ringTime").textContent = pad(Math.floor(s/60))+":"+pad(s%60);
+  $("ringProg").style.strokeDashoffset = C_LEN*(1-frac);
+  $("ringProg").style.stroke = m==="break" ? "var(--t-class)" : "var(--t-study)";
+  let step = -1; if(m==="focus") step = frac<0.4 ? 0 : frac<0.8 ? 1 : 2; if(m==="recall") step = 3;
+  document.querySelectorAll("#steps li").forEach(li => { const k = +li.dataset.s; li.classList.toggle("on", k===step); li.classList.toggle("done", step>k); });
+  $("phase").textContent = {idle:"Ready", focus:["Read","Close & recall","Check & fix"][step] || "Focus", recall:"Time's up", break:"Break · move"}[m];
+  $("recallBox").hidden = m!=="recall";
+  $("startBtn").hidden = m==="focus" || m==="break";
+  $("startBtn").textContent = m==="recall" ? "Save note + start 5-min break" : "Start focus";
+  $("stopBtn").hidden = m==="idle";
+  $("stopBtn").textContent = m==="break" ? "Skip break" : m==="recall" ? "Skip note" : "Stop";
+  $("course").disabled = m!=="idle";
+  if(m!=="idle" && timer.course && $("course").value!==timer.course) $("course").value = timer.course;
+  $("focusDot").hidden = m==="idle";
+}
+function focusOn(course){
+  show("focus");
+  if(timer.mode!=="idle"){ toast("A focus block is already running."); return; }
+  if(course && (isCourse(course) || course==="other")) $("course").value = course;
+  updateHint(); startFocus();
+}
+
+/* ================= actions ================= */
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if(!el) return;
+  const A = el.dataset.act, id = el.dataset.id;
+  switch(A){
+    case "sync": syncSheet(); break;
+    case "copylink": { const link = shareLink(); const box = $("linkBox");
+      const fallback = () => { if(box){ box.focus(); box.select(); } toast("Link selected. Copy it from the box."); };
+      try{ navigator.clipboard.writeText(link).then(() => toast("Link copied."), fallback); }catch(err){ fallback(); } break; }
+    case "export": exportData(); break;
+    case "import": $("impIn").click(); break;
+    case "disconnect": twoTap(el, "Tap again to disconnect", () => { try{ localStorage.removeItem("azel.code"); }catch(err){} location.reload(); }); break;
+    case "wstart": store.set("azel.code", makeCode()); location.reload(); break;
+    case "wjoin": { const c = parseCode($("wCode").value); if(!c){ $("wErr").hidden = false; $("wErr").textContent = "That doesn't look like a planner link or code. Copy it again from your other device."; break; } store.set("azel.code", c); location.reload(); break; }
+    case "go": show(el.dataset.v); break;
+    case "gomissed": todoTab = "missed"; show("todo"); renderTodo(); break;
+    case "addtodo": todoSheet(null, {label:el.dataset.label || (view==="courses" ? openCourse : ""), date:el.dataset.date}); break;
+    case "tedit": todoSheet(byId("todos", id)); break;
+    case "tcheck": { const t = byId("todos", id); if(!t) break; const done = !t.done; put("todos", Object.assign({}, t, {done, doneAt: done ? Date.now() : null})); toast(done ? "Nice! Task completed." : "Moved back to your list."); break; }
+    case "ttab": todoTab = el.dataset.s; renderTodo(); break;
+    case "savetodo": saveTodo(id); break;
+    case "deltodo": twoTap(el, "Tap again to delete", () => { del("todos", id); closeP(); toast("Deleted."); }); break;
+    case "chip": selDate = el.dataset.date; renderChips(); renderTimeline(); break;
+    case "wk": { weekOff += +el.dataset.d; const ds = weekDates(); const dow = (parseYmd(selDate).getDay()+6)%7; selDate = weekOff===0 ? today() : ds[dow]; renderChips(); renderTimeline(); break; }
+    case "chg": chSheet({date: el.dataset.date}); break;
+    case "chkind": chKind = el.dataset.k; chFill(); break;
+    case "savechg": saveChg(); break;
+    case "undoadj": twoTap(el, "Tap again", () => { del("adjust", id); toast("Change undone."); }); break;
+    case "ideas": ideasSheet({date:el.dataset.date, s:el.dataset.s, e:el.dataset.e, adj:el.dataset.adj || null, course:el.dataset.course || null}); break;
+    case "useplan": usePlan(); break;
+    case "clearplan": clearPlan(); break;
+    case "ideaset": closeP(); show("courses"); openCourse = el.dataset.course; cTab = "sets"; renderCourses(); setSheet(null, el.dataset.course); break;
+    case "startfocus": closeP(); focusOn(el.dataset.course || "other"); break;
+    case "folder": openCourse = id; cTab = "todo"; renderCourses(); window.scrollTo(0,0); break;
+    case "cback": openCourse = null; renderCourses(); break;
+    case "ctab": cTab = el.dataset.t; renderCourses(); break;
+    case "addcourse": courseSheet(null); break;
+    case "editcourse": courseSheet(D.cols.courses.find(c => c.id===openCourse)); break;
+    case "savecourse": {
+      const name = $("coName").value.trim(); if(!name){ $("coErr").hidden = false; $("coErr").textContent = "Give the course a name."; break; }
+      const prev = id ? D.cols.courses.find(c => c.id===id) : null;
+      const cid = put("courses", Object.assign({}, prev || {createdAt:Date.now()}, {id:id || undefined, name, code:$("coCode").value.trim(), color:$("coColor").value}));
+      closeP(); if(!id){ openCourse = cid; cTab = "todo"; renderCourses(); } toast(id ? "Saved." : "Course added."); break;
+    }
+    case "delcourse": {
+      const n = countsFor(openCourse); const any = n.todo+n.sets+n.files+n.links + D.cols.todos.filter(t => t.label===openCourse).length;
+      if(any){ toast("Move or delete this course's to-dos, sets, files and links first."); break; }
+      twoTap(el, "Tap again to delete", () => { const c = openCourse; openCourse = null; del("courses", c); toast("Course deleted."); }); break;
+    }
+    case "newset": setSheet(null, openCourse); break;
+    case "editset": setSheet(byId("sets", id)); break;
+    case "addcard": syncCards(); editingSet.cards.push({id:newId(), f:"", b:""}); renderCardRows(); { const rows = document.querySelectorAll(".cardrow .cf"); rows[rows.length-1].focus(); } break;
+    case "rmcard": syncCards(); editingSet.cards = editingSet.cards.filter(c => c.id!==el.dataset.cid); renderCardRows(); break;
+    case "saveset": {
+      syncCards(); const title = $("ssTitle").value.trim();
+      const cards = editingSet.cards.map(c => Object.assign({}, c, {f:c.f.trim(), b:c.b.trim()})).filter(c => c.f || c.b);
+      const err = m => { $("ssErr").hidden = false; $("ssErr").textContent = m; };
+      if(!title){ err("Give the set a title."); break; }
+      if(!cards.length){ err("Add at least one card."); break; }
+      if(cards.some(c => !c.f || !c.b)){ err("Every card needs a front and a back."); break; }
+      put("sets", Object.assign({}, editingSet, {title, cards})); closeP(); toast("Study set saved."); break;
+    }
+    case "delset": twoTap(el, "Tap again to delete", () => { del("sets", id); closeP(); toast("Set deleted."); }); break;
+    case "review": closeP(); startReview(id, false); break;
+    case "reviewunk": startReview(id, true); break;
+    case "rvflip": { rv.flipped = !rv.flipped; el.classList.toggle("flipped", rv.flipped); const b = $("rvBtns"); if(b) b.hidden = false; break; }
+    case "rvyes": answer(true); break;
+    case "rvno": answer(false); break;
+    case "rvclose": endReview(); break;
+    case "upload": $("fileIn").click(); break;
+    case "delfile": twoTap(el, "Tap again", async () => { const f = byId("files", id); if(!f) return; try{ if(D.assets) await D.assets.delete(f.asset); }catch(err){ console.warn(err); } del("files", id); toast("File deleted."); }); break;
+    case "addlink": {
+      const title = $("lkTitle").value.trim(); let url = $("lkUrl").value.trim();
+      if(!url){ toast("Paste the link first."); break; }
+      if(!/^https?:\/\//i.test(url)) url = "https://"+url;
+      try{ new URL(url); }catch(err){ toast("That doesn't look like a link."); break; }
+      put("links", {course:openCourse, title, url, createdAt:Date.now()}); toast("Link added."); break;
+    }
+    case "dellink": twoTap(el, "Tap again", () => { del("links", id); toast("Link deleted."); }); break;
+    case "cal": calM += +el.dataset.d; if(calM<0){ calM = 11; calY--; } if(calM>11){ calM = 0; calY++; } renderCal(); break;
+    case "caltoday": { const d = new Date(); calY = d.getFullYear(); calM = d.getMonth(); calSel = today(); renderCal(); break; }
+    case "calday": { calSel = el.dataset.date; const d = parseYmd(calSel); if(d.getMonth()!==calM){ calM = d.getMonth(); calY = d.getFullYear(); } renderCal(); break; }
+    case "addevent": eventSheet(null, {date:el.dataset.date}); break;
+    case "editevent": eventSheet(byId("events", id)); break;
+    case "saveevent": saveEvent(id); break;
+    case "delevent": twoTap(el, "Tap again to delete", () => { del("events", id); closeP(); toast("Event deleted. Its to-do stays in your list."); }); break;
+  }
+});
+document.addEventListener("change", e => {
+  if(e.target.id==="impIn") importFile(e.target);
+  if(e.target.id==="chCourse") chFill();
+  if(e.target.id==="chStart" && chKind!=="cancel"){ const dur = +e.target.dataset.dur || 150; $("chEnd").value = fromMin(Math.min(1439, toMin(e.target.value)+dur)); }
+});
+
+/* ================= render loop ================= */
+let renderQueued = false;
+function renderAll(){
+  if(renderQueued) return; renderQueued = true;
+  setTimeout(() => {
+    renderQueued = false;
+    safe(fillSelects); safe(renderNow); safe(renderChips); safe(renderTimeline); safe(renderChanges); safe(renderDue);
+    safe(renderTodo); safe(renderCourses); safe(renderCal); safe(renderAnchors); safe(renderStats); safe(renderSyncBtn);
+  }, 0);
+}
+$("courseGuide").innerHTML = ["econ","macro","micro","mon","pub","urban"].map(k => `<div><b>${BUILTIN[k].name}</b><span>${esc(BUILTIN[k].how)}</span></div>`).join("") + `<div><b>Pancasila and PKn</b><span>${esc(GENERIC_HOW)}</span></div>`;
+setLen(lenMin);
+renderLegend(); renderAnchors(); renderStats(); paintTimer();
+renderAll();
+initData();
+setInterval(paintTimer, 500);
+let lastMin = -1, lastDay = today();
+setInterval(() => {
+  const d = new Date(); renderNow();
+  if(d.getMinutes()!==lastMin){ lastMin = d.getMinutes(); safe(renderTimeline); safe(renderDue); safe(renderTodo); }
+  if(today()!==lastDay){ lastDay = today(); weekOff = 0; selDate = today(); renderAll(); renderAnchors(); renderStats(); }
+}, 5000);
+document.addEventListener("visibilitychange", () => { if(!document.hidden){ renderAll(); paintTimer(); if(timer.mode==="focus") keepAwake(true); } });
+if("serviceWorker" in navigator && location.protocol==="https:") window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(e => console.warn("offline mode unavailable", e)); });
+})();
+</script>
+
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const num = n => String(Math.abs(Math.round(+n||0))).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+const rp = n => (Math.round(+n||0)<0 ? "−" : "")+"Rp "+num(n);
+const parseAmt = s => { const d = String(s==null?"":s).replace(/\D/g,"").slice(0,13); return d ? parseInt(d,10) : 0; };
+const newId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const clone = o => JSON.parse(JSON.stringify(o));
+const ls = {
+  get(k,d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MON_S = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAYS_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const fmtDate = s => { if(!s) return ""; const p = s.split("-"); return (+p[2])+" "+MON_S[(+p[1])-1]; };
+
+const OWN = [
+  {id:"needs", name:"Needs", sub:"Transport, phone credit, campus, printing", color:"var(--t-class)"},
+  {id:"fun",   name:"Fun",   sub:"Snacks, coffee, hangouts, shopping", color:"var(--t-fun)"},
+  {id:"save",  name:"Savings", sub:"Don't touch. Let it grow.", color:"var(--t-walk)"},
+  {id:"emerg", name:"Emergency", sub:"Only for real emergencies", color:"var(--t-study)"}
+];
+const BELANJA = {id:"belanja", name:"Bunda's weekly money", sub:"Food and daily shopping", color:"var(--t-sleep)"};
+const CATS = ["Food & drinks","Groceries","Snacks & coffee","Transport","Phone & internet","Campus & printing","Shopping","Hangout & fun","Health","Gifts & donations","Other"];
+const HELD_CATS = ["Event expense","Handed over to the org","Other"];
+
+function defaults(){
+  return {v:1, setup:false, salary:1200000, weekly:250000, weekStart:1, payday:1,
+    salarySplit:{needs:40, fun:25, save:25, emerg:10},
+    bonusSplit:{needs:0, fun:30, save:50, emerg:20},
+    held:[{id:"ukmp", name:"UKMP event money", perPerson:12000, people:40}],
+    wait:[], skipped:0, lastCheck:null};
+}
+
+const M = {mode:"loading", s:null, tx:[], sLoaded:false, tLoaded:false, sref:null, tcol:null};
+function queue(fn){
+  Promise.resolve().then(fn).catch(e => {
+    console.warn("money save failed", e);
+    toast("Couldn't save that. Check your internet and try again.");
+  });
+}
+function persistLocal(){ if(M.mode==="local") ls.set("azel.money", {s:M.s, tx:M.tx}); }
+function saveSettings(s){
+  M.s = s;
+  if(M.mode==="db"){ const body = clone(s); queue(() => M.sref.set(body)); } else persistLocal();
+  render();
+}
+function addTx(t){
+  t.id = newId();
+  M.tx = M.tx.concat([t]);
+  if(M.mode==="db"){ const body = clone(t); delete body.id; queue(() => M.tcol.doc(t.id).set(body)); } else persistLocal();
+  render();
+}
+function delTx(id){
+  M.tx = M.tx.filter(t => t.id!==id);
+  if(M.mode==="db") queue(() => M.tcol.doc(id).delete()); else persistLocal();
+  render();
+}
+function note(msg){ $("mNote").hidden = !msg; $("mNote").textContent = msg || ""; }
+
+function init(root){
+  if(root){
+    M.mode = "db";
+    M.sref = root.collection("money").doc("settings");
+    M.tcol = root.collection("moneytx");
+    const slow = setTimeout(() => { if(!M.sLoaded || !M.tLoaded) note("Your money data can't be reached yet. Check your internet. It will load by itself."); }, 10000);
+    const done = () => { if(M.sLoaded && M.tLoaded){ clearTimeout(slow); note(null); } };
+    M.sref.onSnapshot(snap => {
+      if(!snap.exists && snap.metadata.fromCache && !M.sLoaded) return;
+      M.s = snap.exists ? Object.assign(defaults(), clone(snap.data())) : null;
+      M.sLoaded = true; done(); render();
+    }, err => { M.sLoaded = true; clearTimeout(slow); note("Money data couldn't load. Close and reopen the app to try again."); render(); });
+    M.tcol.onSnapshot(qs => {
+      M.tx = qs.docs.map(d => Object.assign({id:d.id}, clone(d.data())));
+      M.tLoaded = true; done(); render();
+    }, err => { M.tLoaded = true; clearTimeout(slow); note("Money data couldn't load. Close and reopen the app to try again."); render(); });
+  } else {
+    M.mode = "local";
+    const saved = ls.get("azel.money", null);
+    M.s = saved && saved.s ? Object.assign(defaults(), saved.s) : null;
+    M.tx = saved && Array.isArray(saved.tx) ? saved.tx : [];
+    M.sLoaded = M.tLoaded = true;
+    render();
+  }
+}
+window.__moneyExport = () => ({s:M.s, tx:M.tx});
+window.__moneyImport = m => {
+  if(!m) return 0; let n = 0;
+  if(m.s){ saveSettings(Object.assign(defaults(), clone(m.s))); n++; }
+  (Array.isArray(m.tx) ? m.tx : []).forEach(t => {
+    if(!t || !t.id) return;
+    const body = clone(t); const id = body.id; delete body.id;
+    if(!M.tx.some(x => x.id===id)) M.tx = M.tx.concat([Object.assign({id}, body)]);
+    if(M.mode==="db") queue(() => M.tcol.doc(id).set(body));
+    n++;
+  });
+  persistLocal(); render(); return n;
+};
+
+const heldList = () => (M.s && M.s.held) || [];
+const allPockets = () => OWN.concat([BELANJA], heldList().map(h => ({id:h.id, name:h.name, held:true, color:"var(--t-sleep)"})));
+const pName = id => { const p = allPockets().find(p => p.id===id); return p ? p.name : "Removed pocket"; };
+const isHeld = id => heldList().some(h => h.id===id);
+function balances(){
+  const b = {};
+  M.tx.forEach(t => { const d = t.deltas || {}; for(const k in d) b[k] = (b[k]||0) + (+d[k]||0); });
+  return b;
+}
+function split(amount, pct){
+  const ids = OWN.map(p => p.id).filter(k => (+pct[k]||0) > 0);
+  const out = {}; let used = 0;
+  ids.forEach((k,i) => { const v = i===ids.length-1 ? amount-used : Math.floor(amount*pct[k]/100/100)*100; out[k] = v; used += v; });
+  return out;
+}
+function today0(){ const d = new Date(); d.setHours(0,0,0,0); return d; }
+function weekInfo(){
+  const t = today0(); const since = (t.getDay() - (+M.s.weekStart||0) + 7) % 7;
+  const st = new Date(t); st.setDate(t.getDate()-since);
+  return {start:ymd(st), daysLeft:7-since};
+}
+function daysToPayday(){
+  const t = today0(); const pd = Math.min(31, Math.max(1, +M.s.payday||1));
+  const dim = (y,m) => new Date(y, m+1, 0).getDate();
+  let n = new Date(t.getFullYear(), t.getMonth(), Math.min(pd, dim(t.getFullYear(), t.getMonth())));
+  if(n <= t){ const y = t.getFullYear(), m = t.getMonth()+1; n = new Date(y, m, Math.min(pd, dim(y, m))); }
+  return Math.max(1, Math.round((n - t)/864e5));
+}
+function pocketOptions(sel){
+  const own = OWN.concat([BELANJA]).map(p => `<option value="${p.id}"${p.id===sel?" selected":""}>${esc(p.name)}</option>`).join("");
+  const held = heldList().map(h => `<option value="${h.id}"${h.id===sel?" selected":""}>${esc(h.name)}</option>`).join("");
+  return `<optgroup label="Your money">${own}</optgroup>` + (held ? `<optgroup label="Not your money">${held}</optgroup>` : "");
+}
+let toastT = null;
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
+
+let setupFilled = false, histAll = false;
+function render(){
+  if(!M.sLoaded || !M.tLoaded){ $("mLoading").hidden = false; $("mSetup").hidden = true; $("mMain").hidden = true; return; }
+  $("mLoading").hidden = true;
+  if(!M.s || !M.s.setup){ $("mSetup").hidden = false; $("mMain").hidden = true; fillSetup(); return; }
+  $("mSetup").hidden = true; $("mMain").hidden = false;
+  const b = balances();
+  renderHero(b); renderOwn(b); renderHeld(b); renderWait(); renderMonth(); renderHist();
+  $("bankLast").textContent = M.s.lastCheck ? "Last check: "+fmtDate(M.s.lastCheck) : "Not checked yet";
+}
+function renderHero(b){
+  const own = OWN.reduce((a,p) => a + (b[p.id]||0), 0) + (b.belanja||0);
+  const held = heldList().reduce((a,h) => a + (b[h.id]||0), 0);
+  const total = Object.values(b).reduce((a,v) => a+v, 0);
+  $("mHero").innerHTML = `
+    <div><div class="label">Your money</div><div class="big">${rp(own)}</div>
+    <div class="sub">${M.mode==="db" ? "Synced to all your devices" : "Saved on this device only"}</div></div>
+    <div class="hero-row">
+      <div><span class="label">Not yours</span><b>${rp(held)}</b></div>
+      <div><span class="label">Bank + cash should be</span><b>${rp(total)}</b></div>
+    </div>`;
+}
+function renderOwn(b){
+  const wk = weekInfo(); const dp = daysToPayday();
+  const rows = [BELANJA].concat(OWN).map(p => {
+    const bal = b[p.id]||0; let extra = "";
+    if(p.id==="belanja"){
+      const spent = M.tx.reduce((a,t) => { const v = (t.deltas||{}).belanja; return (t.date>=wk.start && v<0) ? a - v : a; }, 0);
+      extra = `This week: spent ${rp(spent)} · about <b>${rp(Math.floor(Math.max(0,bal)/wk.daysLeft/500)*500)}/day</b> for ${wk.daysLeft} day${wk.daysLeft>1?"s":""}`;
+    }
+    if(p.id==="fun") extra = `About <b>${rp(Math.floor(Math.max(0,bal)/dp/500)*500)}/day</b> until payday (${dp} day${dp>1?"s":""})`;
+    if(bal < 0) extra = `<span class="neg"><b>Overspent.</b> Move money in from another pocket.</span>`;
+    return `<div class="pocket" style="--pc:${p.color}">
+      <div class="stripe"></div>
+      <div class="info"><b>${esc(p.name)}</b><span class="n">${esc(p.sub)}</span>${extra?`<span class="x">${extra}</span>`:""}</div>
+      <div class="right"><span class="bal${bal<0?" neg":""}">${rp(bal)}</span>${p.id!=="save"&&p.id!=="emerg"?`<button class="btn ghost small" type="button" data-spend="${p.id}">Spend</button>`:""}</div>
+    </div>`;
+  });
+  $("mOwn").innerHTML = rows.join("");
+}
+function renderHeld(b){
+  const list = heldList();
+  if(!list.length){ $("mHeld").innerHTML = `<div class="card"><p class="muted">No pockets for other people's money. Add one in Settings when you hold money for someone.</p></div>`; return; }
+  $("mHeld").innerHTML = list.map(h => {
+    const bal = b[h.id]||0;
+    let collected = 0, spent = 0, count = 0; const payers = [];
+    M.tx.forEach(t => {
+      const v = (t.deltas||{})[h.id]; if(!v) return;
+      if(v > 0) collected += v; else spent += -v;
+      if(t.kind==="heldin"){ count++; payers.push(t); }
+      if(t.kind==="start" && t.paid && t.paid[h.id]) count += +t.paid[h.id];
+    });
+    const expected = (+h.perPerson||0) * (+h.people||0);
+    const pct = expected ? Math.min(100, collected/expected*100) : 0;
+    payers.sort((a,c) => (a.date<c.date?1:a.date>c.date?-1:(c.ts||0)-(a.ts||0)));
+    return `<div class="card held">
+      <div class="section-head"><h3>${esc(h.name)}</h3><span class="bal${bal<0?" neg":""}">${rp(bal)}</span></div>
+      <p class="muted small">You are holding this money. It is not yours to spend.</p>
+      ${expected ? `<div class="bar" style="--tc:var(--t-sleep)"><i style="width:${pct}%"></i></div>
+      <div class="now-row small"><span>Collected ${rp(collected)} of ${rp(expected)}</span><span>${count} of ${h.people} paid</span></div>` : ""}
+      <div class="now-row small"><span>Spent for the event: ${rp(spent)}</span>${expected && collected<expected ? `<span class="muted">Still to collect: ${rp(expected-collected)}</span>` : ""}</div>
+      <div class="btn-row"><button class="btn small" type="button" data-heldin="${h.id}">Money received</button><button class="btn ghost small" type="button" data-spend="${h.id}">Spend for the event</button></div>
+      ${payers.length ? `<details><summary>Who paid (${payers.length} logged)</summary><ul class="payers">${payers.map(t => `<li><span>${esc(t.who||"No name")}</span><span class="mono">${rp(t.amount)} · ${fmtDate(t.date)}</span></li>`).join("")}</ul></details>` : ""}
+    </div>`;
+  }).join("");
+}
+function renderWait(){
+  const items = (M.s.wait||[]).slice().sort((a,b) => a.added-b.added);
+  const now = Date.now();
+  $("wList").innerHTML = items.map(w => {
+    const left = w.added + 864e5 - now; const ready = left <= 0;
+    const hrs = Math.ceil(left/36e5);
+    return `<div class="wait-item"><div class="info"><b>${esc(w.name)}</b><span class="muted small">${rp(w.price)} · ${ready ? "24 hours passed. Do you still want it?" : "Decide in "+hrs+" h"}</span></div>
+      <div class="btn-row">${ready ? `<button class="btn small" type="button" data-wbuy="${w.id}">Buy it</button>` : ""}<button class="btn ghost small" type="button" data-wskip="${w.id}">Skip it</button></div></div>`;
+  }).join("");
+  $("wSaved").textContent = M.s.skipped ? "Kept by skipping: "+rp(M.s.skipped) : "";
+}
+function renderMonth(){
+  const now = new Date(); const key = now.getFullYear()+"-"+pad(now.getMonth()+1);
+  $("mMonthName").textContent = MONTHS[now.getMonth()];
+  let inn = 0, out = 0; const cats = {};
+  M.tx.forEach(t => {
+    if(!t.date || t.date.slice(0,7)!==key || t.kind==="move" || t.kind==="start") return;
+    const d = t.deltas || {};
+    for(const k in d){
+      if(isHeld(k)) continue;
+      if(d[k] > 0) inn += d[k];
+      else { out += -d[k]; const c = t.cat || "Other"; cats[c] = (cats[c]||0) - d[k]; }
+    }
+  });
+  const list = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+  const max = list.length ? list[0][1] : 1;
+  $("mMonth").innerHTML = `<div class="now-row"><span>In: <b class="mono pos">${rp(inn)}</b></span><span>Out: <b class="mono">${rp(out)}</b></span></div>`
+    + (list.length ? list.map(([c,v]) => `<div class="catrow"><span>${esc(c)}</span><span class="track"><i style="width:${Math.max(3, v/max*100)}%"></i></span><span class="mono">${rp(v)}</span></div>`).join("")
+      : `<p class="muted">No spending logged this month yet. Tap "I spent money" each time you pay for something.</p>`)
+    + `<p class="muted small">Your own money only. UKMP money is not counted here.</p>`;
+}
+function txTitle(t){
+  switch(t.kind){
+    case "start": return "Starting balance";
+    case "salary": return "Salary";
+    case "bonus": return "Bonus"+(t.note?" · "+t.note:"");
+    case "mom": return "Bunda's weekly money";
+    case "income": return "Income"+(t.note?" · "+t.note:"");
+    case "spend": return (t.cat||"Spending")+(t.note?" · "+t.note:"");
+    case "move": return "Moved money"+(t.note?" · "+t.note:"");
+    case "heldin": return "Received"+(t.who?" from "+t.who:"");
+    default: return t.note || "Entry";
+  }
+}
+function txSub(t){
+  const d = t.deltas || {}; const ks = Object.keys(d); let p;
+  if(t.kind==="move"){ const f = ks.find(k => d[k]<0), to = ks.find(k => d[k]>0); p = pName(f)+" → "+pName(to); }
+  else p = ks.length > 2 ? "Split into "+ks.length+" pockets" : ks.map(pName).join(", ");
+  return fmtDate(t.date)+" · "+p;
+}
+function renderHist(){
+  const list = M.tx.slice().sort((a,b) => (a.date<b.date?1:a.date>b.date?-1:(b.ts||0)-(a.ts||0)));
+  const shown = histAll ? list : list.slice(0, 25);
+  $("mHist").innerHTML = shown.map(t => {
+    const sum = Object.values(t.deltas||{}).reduce((a,v) => a+v, 0);
+    const amt = t.kind==="move" ? `<span class="a">${rp(t.amount)}</span>` : `<span class="a ${sum<0?"":"pos"}">${sum<0?"":"+"}${rp(sum)}</span>`;
+    return `<div class="hrow-t"><div style="min-width:0"><div class="t">${esc(txTitle(t))}</div><div class="s">${esc(txSub(t))}</div></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end">${amt}<button class="del" type="button" data-del="${t.id}">Delete</button></div></div>`;
+  }).join("") + (list.length > 25 ? `<div class="hrow-t"><button class="btn ghost small" type="button" id="histMore">${histAll ? "Show less" : "Show all "+list.length}</button></div>` : "")
+    || `<p class="muted" style="padding:12px 0">Nothing logged yet.</p>`;
+}
+
+function fillSetup(){
+  if(setupFilled) return; setupFilled = true;
+  const d = defaults();
+  $("suSalary").value = num(d.salary); $("suWeekly").value = num(d.weekly);
+  $("suPer").value = num(d.held[0].perPerson); $("suPeople").value = d.held[0].people; $("suPayday").value = d.payday;
+  $("suWeekStart").innerHTML = DAYS_LONG.map((n,i) => `<option value="${i}"${i===d.weekStart?" selected":""}>${n}</option>`).join("");
+  setupPreview();
+}
+function setupPreview(){
+  const now = parseAmt($("suNow").value), h = parseAmt($("suHeld").value), bel = parseAmt($("suBel").value);
+  const yours = now - h - bel;
+  if(yours < 0){ $("suPrev").innerHTML = `<span class="neg">UKMP money + Bunda's money are more than your total. Check the numbers.</span>`; return; }
+  const parts = split(yours, defaults().salarySplit);
+  $("suPrev").innerHTML = `<b>The rest is yours: ${rp(yours)}</b>. It will be split like this:`
+    + Object.keys(parts).map(k => `<div class="split-line"><span>${esc(pName(k))}</span><span class="mono">${rp(parts[k])}</span></div>`).join("")
+    + `<div class="split-line"><span>${esc(BELANJA.name)}</span><span class="mono">${rp(bel)}</span></div>`
+    + `<div class="split-line"><span>UKMP event money</span><span class="mono">${rp(h)}</span></div>`
+    + `<div class="small" style="margin-top:6px">You can change the split later in Settings.</div>`;
+}
+$("mSetup").addEventListener("input", setupPreview);
+$("suStart").addEventListener("click", () => {
+  const now = parseAmt($("suNow").value), h = parseAmt($("suHeld").value), bel = parseAmt($("suBel").value);
+  const yours = now - h - bel;
+  if(yours < 0){ $("suErr").hidden = false; $("suErr").textContent = "UKMP money + Bunda's money can't be more than your total. Check the numbers."; return; }
+  $("suErr").hidden = true;
+  const s = defaults();
+  s.setup = true;
+  s.salary = parseAmt($("suSalary").value) || s.salary;
+  s.weekly = parseAmt($("suWeekly").value) || s.weekly;
+  s.payday = Math.min(31, Math.max(1, parseInt($("suPayday").value,10) || 1));
+  s.weekStart = parseInt($("suWeekStart").value,10) || 0;
+  s.held[0].perPerson = parseAmt($("suPer").value);
+  s.held[0].people = Math.max(0, parseInt($("suPeople").value,10) || 0);
+  const deltas = split(yours, s.salarySplit);
+  if(bel) deltas.belanja = bel;
+  if(h) deltas.ukmp = h;
+  const paid = Math.max(0, parseInt($("suPaid").value,10) || 0);
+  saveSettings(s);
+  addTx({ts:Date.now(), date:ymd(new Date()), kind:"start", amount:now, deltas, paid: paid ? {ukmp:paid} : {}});
+  toast("Your pockets are ready.");
+  window.scrollTo(0,0);
+});
+
+let sk = null, sp = {};
+const field = (id,label,inner) => `<div class="field"><label class="label" for="${id}">${label}</label>${inner}</div>`;
+const amtInput = v => field("fAmt","Amount (Rp)",`<input class="in amt" id="fAmt" inputmode="numeric" autocomplete="off" placeholder="0" value="${v?num(v):""}">`);
+const dateInput = () => field("fDate","Date",`<input class="in" id="fDate" type="date" value="${ymd(new Date())}">`);
+const noteInput = (ph,val) => field("fNote","Note (optional)",`<input class="in" id="fNote" maxlength="80" placeholder="${esc(ph||"")}" value="${esc(val||"")}">`);
+const pocketSelect = (id,label,sel) => field(id,label,`<select id="${id}">${pocketOptions(sel)}</select>`);
+
+function openSheet(kind, pre){
+  if(!M.s) return;
+  sk = kind; sp = pre || {};
+  const held = heldList();
+  if(kind==="heldin" && !held.length){ toast("Add a pocket for other people's money in Settings first."); return; }
+  let title = "", body = "", btn = "Save";
+  switch(kind){
+    case "spend": title = "I spent money"; btn = "Save spending";
+      body = amtInput(sp.amount) + pocketSelect("fPocket","Paid from", sp.pocket||"fun") + `<div id="fCatWrap"></div>` + noteInput("e.g. nasi padang, Gojek", sp.note) + dateInput(); break;
+    case "salary": title = "Salary came in"; btn = "Split and save";
+      body = amtInput(M.s.salary) + `<div class="hint" id="fPrev"></div>` + dateInput(); break;
+    case "bonus": title = "Bonus came in"; btn = "Split and save";
+      body = amtInput() + noteInput("e.g. 2 months of cashbook") + `<div class="hint" id="fPrev"></div>` + dateInput(); break;
+    case "mom": title = "Bunda's weekly money";
+      body = amtInput(M.s.weekly) + `<p class="muted">Goes into the ${esc(BELANJA.name)} pocket.</p>` + dateInput(); break;
+    case "income": title = "Other income";
+      body = amtInput() + pocketSelect("fPocket","Put it in","needs") + noteInput("Where is it from?") + dateInput(); break;
+    case "move": title = "Move between pockets";
+      body = amtInput() + pocketSelect("fFrom","From","fun") + pocketSelect("fTo","To","save") + noteInput("Why?") + dateInput(); break;
+    case "heldin": { const h = held.find(x => x.id===sp.held) || held[0]; title = "Money received"; btn = "Save payment";
+      body = field("fHeld","For",`<select id="fHeld">${held.map(x => `<option value="${x.id}"${x.id===h.id?" selected":""}>${esc(x.name)}</option>`).join("")}</select>`)
+        + field("fWho","Who paid?",`<input class="in" id="fWho" maxlength="60" placeholder="Name">`) + amtInput(h.perPerson) + dateInput(); break; }
+  }
+  $("sheetTitle").textContent = title; $("sheetBody").innerHTML = body; $("sheetSave").textContent = btn; $("sheetWarn").hidden = true;
+  $("sheetBack").hidden = false;
+  if(kind==="spend") renderCat(sp.cat);
+  sheetLive();
+  setTimeout(() => { const el = kind==="heldin" ? $("fWho") : $("fAmt"); if(el) el.focus(); }, 60);
+}
+function closeSheet(){ $("sheetBack").hidden = true; sk = null; sp = {}; }
+function renderCat(sel){
+  const p = $("fPocket").value; const list = isHeld(p) ? HELD_CATS : CATS;
+  const cur = sel || ($("fCat") && $("fCat").value);
+  $("fCatWrap").innerHTML = field("fCat","What for?",`<select id="fCat">${list.map(c => `<option${c===cur?" selected":""}>${esc(c)}</option>`).join("")}</select>`);
+}
+function sheetLive(){
+  if(!sk) return;
+  const a = parseAmt($("fAmt") && $("fAmt").value); const b = balances(); let msg = "";
+  if(sk==="salary" || sk==="bonus"){
+    const parts = split(a, sk==="salary" ? M.s.salarySplit : M.s.bonusSplit);
+    $("fPrev").innerHTML = a ? "<b>It goes into:</b>"+Object.keys(parts).map(k => `<div class="split-line"><span>${esc(pName(k))}</span><span class="mono">${rp(parts[k])}</span></div>`).join("") : "Type the amount to see the split.";
+  }
+  if(sk==="spend"){
+    const p = $("fPocket").value; const bal = b[p]||0;
+    if(isHeld(p)) msg = "This is "+pName(p)+", not yours. Only use it for that event.";
+    else if(a > bal) msg = pName(p)+" only has "+rp(bal)+". This will push it below zero. Move money in from another pocket first, or pick another pocket.";
+    else if(p==="save" || p==="emerg") msg = "You're paying from "+pName(p)+". Is this really needed?";
+  }
+  if(sk==="move"){
+    const f = $("fFrom").value, t = $("fTo").value;
+    if(f===t) msg = "Pick two different pockets.";
+    else if(isHeld(f) && !isHeld(t)) msg = "This money isn't yours. Only move it if you're paying yourself back for an event expense.";
+    else if(a > (b[f]||0)) msg = pName(f)+" only has "+rp(b[f]||0)+".";
+    else if(f==="save" || f==="emerg") msg = "Taking from "+pName(f)+". Is this really needed?";
+  }
+  $("sheetWarn").hidden = !msg; $("sheetWarn").textContent = msg;
+}
+$("sheetBody").addEventListener("input", sheetLive);
+$("sheetBody").addEventListener("change", e => {
+  if(e.target.id==="fPocket" && sk==="spend") renderCat();
+  if(e.target.id==="fHeld"){ const h = heldList().find(x => x.id===e.target.value); if(h && h.perPerson) $("fAmt").value = num(h.perPerson); }
+  sheetLive();
+});
+$("sheetClose").addEventListener("click", closeSheet);
+$("sheetBack").addEventListener("click", e => { if(e.target===$("sheetBack")) closeSheet(); });
+document.addEventListener("keydown", e => { if(e.key==="Escape" && !$("sheetBack").hidden) closeSheet(); });
+$("sheet").addEventListener("submit", e => {
+  e.preventDefault();
+  const a = parseAmt($("fAmt").value);
+  const warn = m => { $("sheetWarn").hidden = false; $("sheetWarn").textContent = m; };
+  if(a <= 0){ warn("Type an amount bigger than 0."); return; }
+  const date = ($("fDate") && $("fDate").value) || ymd(new Date());
+  const noteV = $("fNote") ? $("fNote").value.trim() : "";
+  const t = {ts:Date.now(), date, kind:sk, amount:a};
+  let after = null;
+  switch(sk){
+    case "spend": { const p = $("fPocket").value; t.deltas = {[p]: -a}; t.cat = $("fCat").value; after = p; break; }
+    case "salary": t.deltas = split(a, M.s.salarySplit); break;
+    case "bonus": t.deltas = split(a, M.s.bonusSplit); break;
+    case "mom": t.deltas = {belanja: a}; after = "belanja"; break;
+    case "income": t.deltas = {[$("fPocket").value]: a}; break;
+    case "move": { const f = $("fFrom").value, to = $("fTo").value; if(f===to){ warn("Pick two different pockets."); return; } t.deltas = {[f]: -a, [to]: a}; break; }
+    case "heldin": t.deltas = {[$("fHeld").value]: a}; t.who = $("fWho").value.trim(); after = $("fHeld").value; break;
+  }
+  if(noteV) t.note = noteV;
+  const waitId = sp.waitId;
+  addTx(t);
+  if(waitId){ const s = clone(M.s); s.wait = (s.wait||[]).filter(x => x.id!==waitId); saveSettings(s); }
+  closeSheet();
+  toast(after ? "Saved. "+pName(after)+" now has "+rp(balances()[after]||0)+"." : "Saved.");
+});
+
+let armedDel = null, armedT = null;
+$("view-money").addEventListener("click", e => {
+  const el = e.target.closest("button"); if(!el) return;
+  if(el.dataset.k) openSheet(el.dataset.k);
+  else if(el.dataset.spend) openSheet("spend", {pocket: el.dataset.spend});
+  else if(el.dataset.heldin) openSheet("heldin", {held: el.dataset.heldin});
+  else if(el.dataset.del){
+    if(armedDel===el.dataset.del){ clearTimeout(armedT); armedDel = null; delTx(el.dataset.del); toast("Deleted."); return; }
+    document.querySelectorAll(".del[data-armed]").forEach(x => { x.removeAttribute("data-armed"); x.textContent = "Delete"; });
+    armedDel = el.dataset.del; el.setAttribute("data-armed","1"); el.textContent = "Tap again to delete";
+    clearTimeout(armedT); armedT = setTimeout(() => { armedDel = null; el.removeAttribute("data-armed"); el.textContent = "Delete"; }, 3500);
+  }
+  else if(el.id==="histMore"){ histAll = !histAll; renderHist(); }
+  else if(el.dataset.wskip){
+    const s = clone(M.s); const w = (s.wait||[]).find(x => x.id===el.dataset.wskip); if(!w) return;
+    s.wait = s.wait.filter(x => x.id!==w.id); s.skipped = (+s.skipped||0) + (+w.price||0); saveSettings(s);
+    toast("Skipped. You kept "+rp(w.price)+".");
+  }
+  else if(el.dataset.wbuy){
+    const w = (M.s.wait||[]).find(x => x.id===el.dataset.wbuy); if(!w) return;
+    openSheet("spend", {amount:w.price, pocket:"fun", note:w.name, cat:"Shopping", waitId:w.id});
+  }
+  else if(el.dataset.fix){
+    const amt = +el.dataset.amt; const p = $("fixPocket").value;
+    if(el.dataset.fix==="miss") addTx({ts:Date.now(), date:ymd(new Date()), kind:"spend", amount:amt, deltas:{[p]: -amt}, cat:"Other", note:"Not logged (found in bank check)"});
+    else addTx({ts:Date.now(), date:ymd(new Date()), kind:"income", amount:amt, deltas:{[p]: amt}, note:"Found in bank check"});
+    $("bankRes").innerHTML = `<p class="pos" style="margin-top:10px"><b>Fixed.</b> Your pockets now match your bank.</p>`;
+  }
+});
+$("bankBtn").addEventListener("click", () => {
+  if(!$("bankIn").value.trim()){ $("bankRes").innerHTML = `<p class="muted" style="margin-top:10px">Type your bank + cash total first.</p>`; return; }
+  const actual = parseAmt($("bankIn").value);
+  const total = Object.values(balances()).reduce((a,v) => a+v, 0);
+  const diff = actual - total;
+  const own = OWN.concat([BELANJA]).map(p => `<option value="${p.id}"${p.id===(diff<0?"fun":"needs")?" selected":""}>${esc(p.name)}</option>`).join("");
+  let h;
+  if(diff===0) h = `<p class="pos" style="margin-top:10px"><b>It matches.</b> Every rupiah has a pocket.</p>`;
+  else if(diff < 0) h = `<p style="margin-top:10px"><b class="neg">${rp(-diff)} is missing.</b> You probably spent it and forgot to log it. Think about the last few days. If you can't remember, log it now so your pockets are right again.</p>
+    <div class="inline" style="margin-top:8px"><select id="fixPocket" aria-label="Take it from">${own}</select><button class="btn small" type="button" data-fix="miss" data-amt="${-diff}">Log as spending</button></div>`;
+  else h = `<p style="margin-top:10px"><b>${rp(diff)} extra</b> is not in any pocket. Maybe income you didn't log?</p>
+    <div class="inline" style="margin-top:8px"><select id="fixPocket" aria-label="Add it to">${own}</select><button class="btn small" type="button" data-fix="extra" data-amt="${diff}">Add to pocket</button></div>`;
+  $("bankRes").innerHTML = h;
+  const s = clone(M.s); s.lastCheck = ymd(new Date()); saveSettings(s);
+});
+$("wAdd").addEventListener("click", () => {
+  const name = $("wName").value.trim(), price = parseAmt($("wPrice").value);
+  if(!name || !price){ toast("Type what it is and the price."); return; }
+  const s = clone(M.s); s.wait = (s.wait||[]).concat([{id:newId(), name, price, added:Date.now()}]); saveSettings(s);
+  $("wName").value = ""; $("wPrice").value = "";
+  toast("Added. Decide tomorrow.");
+});
+
+function splitInputs(pre, sp){
+  return OWN.map(p => field(pre+p.id, p.name+" %", `<input class="in" id="${pre}${p.id}" type="number" min="0" max="100" step="1" inputmode="numeric" value="${+sp[p.id]||0}">`)).join("");
+}
+function heldRow(h, bal){
+  return `<div class="hrow" data-hid="${h.id}">
+    ${field("hn_"+h.id,"Pocket name",`<input class="in" id="hn_${h.id}" maxlength="40" value="${esc(h.name)}">`)}
+    <div class="grid2">${field("hp_"+h.id,"Fee per person",`<input class="in amt" id="hp_${h.id}" inputmode="numeric" autocomplete="off" value="${h.perPerson?num(h.perPerson):""}" placeholder="optional">`)}
+    ${field("hc_"+h.id,"Number of people",`<input class="in" id="hc_${h.id}" type="number" min="0" inputmode="numeric" value="${h.people||""}" placeholder="optional">`)}</div>
+    ${bal===0 ? `<button class="btn ghost small" type="button" data-hrm="${h.id}">Remove this pocket</button>` : `<span class="muted small">Holds ${rp(bal)}. Empty it before you remove it.</span>`}
+  </div>`;
+}
+function buildSettings(){
+  const s = M.s; const b = balances();
+  $("mSetForm").innerHTML = `
+    <div class="grid2" style="margin-top:12px">${field("stSalary","Salary per month",`<input class="in amt" id="stSalary" inputmode="numeric" autocomplete="off" value="${num(s.salary)}">`)}
+    ${field("stPayday","Payday (day of month)",`<input class="in" id="stPayday" type="number" min="1" max="31" inputmode="numeric" value="${s.payday}">`)}</div>
+    <h3>When salary comes, split it like this</h3><div class="grid4">${splitInputs("ss", s.salarySplit)}</div><span class="small muted" id="ssTot"></span>
+    <h3>When a bonus comes, split it like this</h3><div class="grid4">${splitInputs("bs", s.bonusSplit)}</div><span class="small muted" id="bsTot"></span>
+    <div class="grid2">${field("stWeekly","Bunda's money per week",`<input class="in amt" id="stWeekly" inputmode="numeric" autocomplete="off" value="${num(s.weekly)}">`)}
+    ${field("stWeekStart","It usually comes on",`<select id="stWeekStart">${DAYS_LONG.map((n,i) => `<option value="${i}"${i===+s.weekStart?" selected":""}>${n}</option>`).join("")}</select>`)}</div>
+    <h3>Pockets for other people's money</h3>
+    <p class="muted small">UKMP money, money a friend asked you to hold, a group's shared money. Anything that isn't yours.</p>
+    <div id="hRows" class="section">${heldList().map(h => heldRow(h, b[h.id]||0)).join("")}</div>
+    <button class="btn ghost small" type="button" id="setAddHeld">Add a pocket for other money</button>
+    <div class="notice" id="setErr" hidden></div>
+    <button class="btn" type="button" id="setSave">Save settings</button>
+    <p class="muted small">${M.mode==="db" ? "Your money data syncs to every device connected to your planner." : "Right now your money data is saved on this device only."}</p>
+    <button class="btn ghost small" type="button" id="setErase">Erase all money data</button>`;
+  splitTotals();
+}
+function splitTotals(){
+  ["ss","bs"].forEach(pre => {
+    const el = $(pre+"Tot"); if(!el) return;
+    const t = OWN.reduce((a,p) => a + (parseInt($(pre+p.id).value,10)||0), 0);
+    el.innerHTML = t===100 ? `Total: 100% <span class="pos">✓</span>` : `<span class="neg">Total: ${t}%. It must be 100%.</span>`;
+  });
+}
+$("mSet").addEventListener("toggle", () => { if($("mSet").open) buildSettings(); });
+$("mSetForm").addEventListener("input", splitTotals);
+let eraseArmed = false, eraseT = null;
+$("mSetForm").addEventListener("click", e => {
+  const el = e.target.closest("button"); if(!el) return;
+  if(el.id==="setAddHeld"){
+    const id = "h"+newId();
+    $("hRows").insertAdjacentHTML("beforeend", heldRow({id, name:"", perPerson:0, people:0}, 0));
+    $("hn_"+id).focus();
+  }
+  else if(el.dataset.hrm){ const row = el.closest(".hrow"); row.hidden = true; row.dataset.removed = "1"; }
+  else if(el.id==="setSave"){
+    const err = m => { $("setErr").hidden = false; $("setErr").textContent = m; };
+    const read = pre => { const o = {}; OWN.forEach(p => { o[p.id] = Math.max(0, parseInt($(pre+p.id).value,10)||0); }); return o; };
+    const ss = read("ss"), bs = read("bs");
+    const tot = o => Object.values(o).reduce((a,v) => a+v, 0);
+    if(tot(ss)!==100){ err("The salary split must add up to 100%. Now it's "+tot(ss)+"%."); return; }
+    if(tot(bs)!==100){ err("The bonus split must add up to 100%. Now it's "+tot(bs)+"%."); return; }
+    const held = [];
+    $("hRows").querySelectorAll(".hrow").forEach(row => {
+      if(row.dataset.removed) return;
+      const id = row.dataset.hid; const name = $("hn_"+id).value.trim();
+      if(!name) return;
+      held.push({id, name, perPerson:parseAmt($("hp_"+id).value), people:Math.max(0, parseInt($("hc_"+id).value,10)||0)});
+    });
+    const s = clone(M.s);
+    s.salary = parseAmt($("stSalary").value) || s.salary;
+    s.payday = Math.min(31, Math.max(1, parseInt($("stPayday").value,10)||1));
+    s.weekly = parseAmt($("stWeekly").value) || s.weekly;
+    s.weekStart = parseInt($("stWeekStart").value,10)||0;
+    s.salarySplit = ss; s.bonusSplit = bs; s.held = held;
+    $("setErr").hidden = true;
+    saveSettings(s); buildSettings(); toast("Settings saved.");
+  }
+  else if(el.id==="setErase"){
+    if(!eraseArmed){ eraseArmed = true; el.textContent = "Tap again to erase everything"; el.style.color = "var(--bad)";
+      clearTimeout(eraseT); eraseT = setTimeout(() => { eraseArmed = false; el.textContent = "Erase all money data"; el.style.color = ""; }, 4000); return; }
+    eraseArmed = false;
+    const ids = M.tx.map(t => t.id);
+    if(M.mode==="db"){ ids.forEach(id => queue(() => M.tcol.doc(id).delete())); queue(() => M.sref.delete()); }
+    else ls.del("azel.money");
+    M.s = null; M.tx = []; setupFilled = false; $("mSet").open = false;
+    render(); toast("Money data erased.");
+  }
+});
+
+document.addEventListener("input", e => {
+  const el = e.target;
+  if(el.classList && el.classList.contains("amt")){ const v = parseAmt(el.value); const s = v ? num(v) : ""; if(el.value!==s) el.value = s; }
+});
+
+setInterval(() => { if(!$("view-money").hidden && M.s && M.s.setup){ const b = balances(); renderOwn(b); renderWait(); } }, 60000);
+if(window.__planner) init(window.__planner.root); else document.addEventListener("planner-ready", e => init(e.detail.root), {once:true});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only one planner is allowed: the one with Azel's private code.
+    // Replace PLANNER_CODE with the code from the private planner link (the part after #k=).
+    // The real code is never stored in this public repository.
+    match /planners/PLANNER_CODE {
+      allow get, write: if true;
+      match /{col}/{id} {
+        allow read, write: if true;
+      }
+    }
+  }
+}
