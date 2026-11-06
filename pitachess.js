@@ -114,9 +114,15 @@ const NAME = {p:"pawn", n:"knight", b:"bishop", r:"rook", q:"queen", k:"king"};
 
 /* ---------- state ---------- */
 let g = new Chess(), sel = null, legal = [], busy = false, flip = false, pita = null, els = {}, hintMv = null, lastMv = null, mounted = false, loadedPgn = null;
-const cs = () => Object.assign({level:"medium", side:"w", stats:{}, day:{d:"", n:0}}, byId("prefs","chess") || {});
+const cs = () => Object.assign({level:"medium", side:"w", stats:{}, day:{d:"", n:0}, mode:"pita", wname:"Azel", bname:"Friend", autoflip:false, fflip:false, fstats:{w:0,b:0,d:0}}, byId("prefs","chess") || {});
 function save(patch){ const s = Object.assign({}, byId("prefs","chess") || {}, patch, {id:"chess"}); delete s.updatedAt; put("prefs", s); }
-const me = () => cs().gside || cs().side, pitaSide = () => me()==="w" ? "b" : "w";
+// two modes: "pita" (play against Pita) and "friend" (two people take turns on one device)
+const friend = () => cs().mode==="friend";
+const K = () => friend() ? {pgn:"fpgn", done:"fdone"} : {pgn:"pgn", done:"done"};
+const me = () => friend() ? g.turn() : (cs().gside || cs().side);
+const pitaSide = () => friend() ? null : (me()==="w" ? "b" : "w");
+const nm = c => { const s = cs(), n = (c==="w" ? s.wname : s.bname) || ""; return n.trim() || (c==="w" ? "White" : "Pink"); };
+const wantFlip = () => friend() ? (!!cs().fflip !== (!!cs().autoflip && g.turn()==="b")) : me()==="b";
 
 function say(text, mood, state){
   const b = $("chSay"); if(b) b.textContent = text;
@@ -127,7 +133,7 @@ function placeEl(el, sq){ const [x,y] = sqXY(sq); el.style.transform = `translat
 
 function drawBoard(){
   const box = $("chBoard"); if(!box) return;
-  flip = me()==="b";
+  flip = wantFlip();
   let sq = "";
   for(let r=0;r<8;r++) for(let f=0;f<8;f++){
     const ff = flip ? 7-f : f, rr = flip ? 7-r : r;
@@ -180,19 +186,36 @@ function tray(){
   const cnt = {w:{p:8,n:2,b:2,r:2,q:1}, b:{p:8,n:2,b:2,r:2,q:1}};
   g.board().forEach(row => row.forEach(p => { if(p && p.type!=="k") cnt[p.color][p.type]--; }));
   const lost = c => ["q","r","b","n","p"].map(k => Array(Math.max(0,cnt[c][k])).fill(`<span class="tp">${pieceSvg(k,c)}</span>`).join("")).join("");
-  t.innerHTML = `<div><span class="label">You took</span><div class="tps">${lost(pitaSide()) || `<span class="muted small">nothing yet</span>`}</div></div><div><span class="label">Pita took</span><div class="tps">${lost(me()) || `<span class="muted small">nothing yet</span>`}</div></div>`;
+  const none = `<span class="muted small">nothing yet</span>`;
+  if(friend()){ t.innerHTML = `<div><span class="label">${esc(nm("w"))} took</span><div class="tps">${lost("b") || none}</div></div><div><span class="label">${esc(nm("b"))} took</span><div class="tps">${lost("w") || none}</div></div>`; return; }
+  t.innerHTML = `<div><span class="label">You took</span><div class="tps">${lost(pitaSide()) || none}</div></div><div><span class="label">Pita took</span><div class="tps">${lost(me()) || none}</div></div>`;
 }
 function stats(){
-  const s = cs(), lv = s.glevel || s.level, st = (s.stats||{})[lv] || {w:0,l:0,d:0};
-  const el = $("chStats"); if(el) el.innerHTML = `${esc(LEVELS[lv].who)} (${LEVELS[lv].name}): you won <b>${st.w}</b>, Pita won <b>${st.l}</b>, draws <b>${st.d}</b>`;
+  const s = cs(), lv = s.glevel || s.level, st = (s.stats||{})[lv] || {w:0,l:0,d:0}, fs = Object.assign({w:0,b:0,d:0}, s.fstats || {});
+  const el = $("chStats"); if(el) el.innerHTML = friend() ? `Friend games: White won <b>${fs.w}</b>, Pink won <b>${fs.b}</b>, draws <b>${fs.d}</b>` : `${esc(LEVELS[lv].who)} (${LEVELS[lv].name}): you won <b>${st.w}</b>, Pita won <b>${st.l}</b>, draws <b>${st.d}</b>`;
+  const elF = $("chStatsF"); if(elF) elF.innerHTML = `${esc(nm("w"))} (white) won <b>${fs.w}</b>, ${esc(nm("b"))} (pink) won <b>${fs.b}</b>, draws <b>${fs.d}</b>`;
+  document.querySelectorAll('[data-ch="mode"]').forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v===(friend() ? "friend" : "pita"))));
+  document.querySelectorAll("[data-only]").forEach(x => { x.hidden = x.dataset.only !== (friend() ? "friend" : "pita"); });
+  const af = $("chAuto"); if(af) af.checked = !!s.autoflip;
+  ["w","b"].forEach(c => { const i = $("chName"+c); if(i && document.activeElement!==i) i.value = c==="w" ? (s.wname||"") : (s.bname||""); });
   document.querySelectorAll('[data-ch="level"]').forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v===lv)));
   document.querySelectorAll('[data-ch="side"]').forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v===s.side)));
 }
-function persist(){ loadedPgn = g.pgn(); save({pgn: loadedPgn}); }
+function persist(){ loadedPgn = g.pgn(); save({[K().pgn]: loadedPgn}); }
 
 /* ---------- game flow ---------- */
 function over(){
   if(!g.isGameOver()) return false;
+  if(friend()){
+    const s = cs(), fs = Object.assign({w:0,b:0,d:0}, s.fstats || {});
+    let line, mood;
+    if(g.isCheckmate()){ const win = g.turn()==="w" ? "b" : "w"; fs[win]++; line = "Checkmate! "+nm(win)+" wins! Great game, both of you!"; mood = "love"; }
+    else { fs.d++; line = (g.isStalemate() ? "Stalemate!" : g.isThreefoldRepetition() ? "Same position three times!" : g.isInsufficientMaterial() ? "Not enough pieces to checkmate!" : "") + " It's a draw. Rematch?"; mood = "confused"; }
+    loadedPgn = g.pgn();
+    save({fstats:fs, fdone:true, fpgn:loadedPgn});
+    say(line.trim(), mood); setCtrl(true); stats();
+    return true;
+  }
   const s = cs(), lv = s.glevel || s.level, stt = Object.assign({}, s.stats || {}); const st = Object.assign({w:0,l:0,d:0}, stt[lv] || {});
   let res, line, mood;
   if(g.isCheckmate()){
@@ -216,6 +239,15 @@ function setCtrl(ended){
 function reactAfter(m, byPita){
   if(over()) return;
   const n = m.captured ? NAME[m.captured] : "";
+  if(friend()){
+    const mover = nm(m.color), next = nm(g.turn());
+    if(g.inCheck()) say("Check! "+next+", save your king!", "surprised");
+    else if(m.captured==="q") say("Wow! "+mover+" took the queen! "+next+"'s turn.", "surprised");
+    else if(m.captured) say(pickLine([mover+" took a "+n+"! "+next+"'s turn.", "Ooh, bye bye "+n+"! Your move, "+next+".", "Nice capture, "+mover+"! "+next+", your turn."]), "happy");
+    else say(pickLine([next+"'s turn.", "Your move, "+next+".", "Okay "+next+", what will you do?"]), "normal");
+    if(cs().autoflip) setTimeout(() => { if(friend() && wantFlip()!==flip) drawBoard(); }, 520);
+    return;
+  }
   if(byPita){
     if(g.inCheck()) say("Check! Protect your king.", "strict");
     else if(m.captured==="q") say("Yay, I took your queen!", "happy");
@@ -240,7 +272,7 @@ function doMove(mv, byPita){
   return m;
 }
 function pitaTurn(){
-  if(g.isGameOver() || g.turn()!==pitaSide()) return;
+  if(friend() || g.isGameOver() || g.turn()!==pitaSide()) return;
   busy = true;
   const lv = LEVELS[cs().glevel || cs().level] || LEVELS.medium;
   setTimeout(() => {
@@ -315,11 +347,17 @@ function tapSquare(s){
   marks();
 }
 function askPromo(from, to){
-  P.openP("Choose a piece", `<p class="muted small">Your pawn reached the end. What should it become?</p><div class="promo-row">${["q","r","b","n"].map(k => `<button class="opt" type="button" data-ch="promo" data-k="${k}" data-from="${from}" data-to="${to}">${pieceSvg(k, me())}<span>${NAME[k]}</span></button>`).join("")}</div>`);
+  P.openP("Choose a piece", `<p class="muted small">Your pawn reached the end. What should it become?</p><div class="promo-row">${["q","r","b","n"].map(k => `<button class="opt" type="button" data-ch="promo" data-k="${k}" data-from="${from}" data-to="${to}">${pieceSvg(k, g.turn())}<span>${NAME[k]}</span></button>`).join("")}</div>`);
 }
 function newGame(){
   const s = cs();
   g = new Chess(); sel = null; legal = []; hintMv = null; lastMv = null; loadedPgn = g.pgn();
+  if(friend()){
+    save({fpgn:"", fdone:false});
+    drawBoard(); tray(); setCtrl(false); stats();
+    say(nm("w")+" vs "+nm("b")+"! I'll be the referee. "+nm("w")+" has white and goes first.", "happy");
+    return;
+  }
   save({pgn:"", done:false, gside:s.side, glevel:s.level});
   drawBoard(); tray(); setCtrl(false); stats();
   const lv = LEVELS[s.level];
@@ -331,9 +369,10 @@ function newGame(){
 function undo(){
   if(busy) return;
   if(g.history().length===0) return;
-  g.undo(); if(g.turn()!==me() && g.history().length) g.undo();
+  g.undo(); if(!friend() && g.turn()!==me() && g.history().length) g.undo();
   if(g.turn()!==me()){ /* Pita moved first as white: just replay her move */ }
   sel = null; legal = []; hintMv = null; lastMv = null;
+  if(friend()){ drawBoard(); tray(); persist(); say("Move taken back. "+nm(g.turn())+"'s turn again.", "normal"); return; }
   drawPieces(); tray(); persist();
   say(pickLine(["Okay, let's take that back. Try again!", "Undo! Think it through this time.", "No problem. Take your time."]), "normal");
   if(g.turn()===pitaSide()) pitaTurn();
@@ -348,7 +387,7 @@ function hint(){
     if(!r) return;
     hintMv = r; marks();
     const pc = g.get(r.from);
-    say("Try moving your "+NAME[pc.type]+" from "+r.from+" to "+r.to+".", "happy");
+    say((friend() ? nm(g.turn())+", try" : "Try")+" moving your "+NAME[pc.type]+" from "+r.from+" to "+r.to+".", "happy");
   }, 300);
 }
 
@@ -358,37 +397,62 @@ function render(){
   if(!mounted){
     mounted = true;
     v.innerHTML = `
+      <div class="segs chess-mode" role="group" aria-label="Who do you play with?"><button type="button" data-ch="mode" data-v="pita">With Pita</button><button type="button" data-ch="mode" data-v="friend">With a friend</button></div>
       <div class="chess-top"><div class="pita-wrap chess-pita" id="chPita"></div><div class="bubble tutor chess-say" id="chSay">Let's battle, Azel!</div></div>
       <div class="chess-board" id="chBoard"></div>
       <div class="btn-row" id="chCtrl"></div>
       <div class="card chess-tray" id="chTray"></div>
-      <div class="card">
+      <div class="card" data-only="friend" hidden>
+        <p class="small muted">Two players on this device: take turns, and Pita is the referee.</p>
+        <div class="chess-names">
+          <div class="field"><label for="chNamew">White player</label><input class="in" id="chNamew" maxlength="20" placeholder="Azel" autocomplete="off"></div>
+          <div class="field"><label for="chNameb">Pink player</label><input class="in" id="chNameb" maxlength="20" placeholder="Friend" autocomplete="off"></div>
+        </div>
+        <label class="anchor" style="border:0;padding:0"><input type="checkbox" id="chAuto"><span>Turn the board for each player</span></label>
+        <div class="btn-row"><button class="btn ghost small" type="button" data-ch="flip">Flip board now</button></div>
+        <p class="small muted" id="chStatsF"></p>
+      </div>
+      <div class="card" data-only="pita">
         <div class="field"><label>Level</label><div class="segs" role="group" aria-label="Level">${Object.keys(LEVELS).map(k => `<button type="button" data-ch="level" data-v="${k}">${LEVELS[k].name}</button>`).join("")}</div></div>
         <div class="field"><label>You play</label><div class="segs" role="group" aria-label="Your colour"><button type="button" data-ch="side" data-v="w">White (go first)</button><button type="button" data-ch="side" data-v="b">Pink (go second)</button></div></div>
         <p class="small muted" id="chStats"></p>
         <p class="small muted">A new level or colour starts on your next game. Tip: one game is a nice reward after a study block.</p>
       </div>`;
     pita = window.Pita ? window.Pita.create($("chPita"), {mood:"happy"}) : null;
-    const s = cs();
-    if(s.pgn){ try{ g.loadPgn(s.pgn); }catch(e){ g = new Chess(); } }
-    loadedPgn = g.pgn();
-    drawBoard(); tray(); stats();
-    if(s.done || g.isGameOver()){ setCtrl(true); say("Good game! Tap Play again for a rematch.", "happy"); }
-    else { setCtrl(false); say(g.history().length ? "Welcome back! Let's continue our game." : "Let's battle, Azel! Tap a piece to see where it can go.", "happy"); if(g.turn()===pitaSide()) pitaTurn(); }
+    ["w","b"].forEach(c => $("chName"+c).addEventListener("change", e => { save({[c==="w" ? "wname" : "bname"]: e.target.value.trim().slice(0,20)}); tray(); }));
+    $("chAuto").addEventListener("change", e => { save({autoflip:e.target.checked}); if(wantFlip()!==flip) drawBoard(); });
+    loadMode(true);
     return;
   }
   // changes from another device
-  const s = cs();
-  if(!busy && (s.pgn||"") !== (loadedPgn||"") && (s.pgn||"") !== g.pgn()){
-    g = new Chess(); if(s.pgn){ try{ g.loadPgn(s.pgn); }catch(e){} }
-    loadedPgn = g.pgn(); sel = null; legal = []; lastMv = null; drawBoard(); tray(); setCtrl(!!s.done || g.isGameOver());
+  const s = cs(), kp = s[K().pgn] || "";
+  if(!busy && kp !== (loadedPgn||"") && kp !== g.pgn()){
+    g = new Chess(); if(kp){ try{ g.loadPgn(kp); }catch(e){} }
+    loadedPgn = g.pgn(); sel = null; legal = []; lastMv = null; drawBoard(); tray(); setCtrl(!!s[K().done] || g.isGameOver());
     const vis = !$("view-chess").hidden && document.visibilityState==="visible";
     if(vis && !g.isGameOver() && g.turn()===pitaSide()) pitaTurn();
   }
   stats();
 }
+// show the game of the chosen mode (each mode keeps its own game)
+function loadMode(first){
+  const s = cs(), kp = s[K().pgn] || "";
+  g = new Chess(); if(kp){ try{ g.loadPgn(kp); }catch(e){ g = new Chess(); } }
+  loadedPgn = g.pgn(); sel = null; legal = []; hintMv = null; lastMv = null;
+  drawBoard(); tray(); stats();
+  const ended = !!s[K().done] || g.isGameOver();
+  setCtrl(ended);
+  if(friend()){
+    say(ended ? "Good game! Tap Play again for a rematch." : g.history().length ? "Game continues! "+nm(g.turn())+"'s turn." : nm("w")+" vs "+nm("b")+"! "+nm("w")+" has white and goes first.", "happy");
+    return;
+  }
+  if(ended){ say("Good game! Tap Play again for a rematch.", "happy"); return; }
+  say(g.history().length ? (first ? "Welcome back! Let's continue our game." : "Back to our game! Your turn.") : "Let's battle, Azel! Tap a piece to see where it can go.", "happy");
+  if(g.turn()===pitaSide()) pitaTurn();
+}
 document.addEventListener("click", e => {
   const el = e.target.closest("[data-ch]"); if(!el) return;
+  if(a0(el)) return;
   const a = el.dataset.ch;
   if(a==="new") newGame();
   if(a==="resign"){ if(g.history().length && !g.isGameOver()) P.twoTap(el, "Tap again", newGame); else newGame(); }
@@ -398,6 +462,12 @@ document.addEventListener("click", e => {
   if(a==="side"){ save({side:el.dataset.v}); toast("New colour starts on your next game."); }
   if(a==="promo"){ P.closeP(); doMove({from:el.dataset.from, to:el.dataset.to, promotion:el.dataset.k}, false); persist(); pitaTurn(); }
 });
+function a0(el){
+  const a = el.dataset.ch;
+  if(a==="mode"){ if(busy){ toast("Wait for Pita's move first."); return true; } if((el.dataset.v==="friend")!==friend()){ save({mode:el.dataset.v}); loadMode(false); } return true; }
+  if(a==="flip"){ save({fflip:!cs().fflip}); drawBoard(); return true; }
+  return false;
+}
 window.__chessRender = render;
 try{ if(D.cols && D.cols.prefs) render(); }catch(e){ console.warn(e); }
 window.__chessEngine = {search, LEVELS, evaluate};
