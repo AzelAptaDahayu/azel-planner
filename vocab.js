@@ -84,6 +84,7 @@ const CARD_SHAPE = `{"word": the headword (base form), "level": CEFR level like 
 "collocations": [4-6 common word partners, e.g. "make a decision"],
 "examples": [3 {"en": "sentence", "id": "terjemahan"}; one must sound like an IELTS Speaking answer],
 "instead_of": [basic words this word can replace, e.g. "choose"],
+"upgrades": [4-6 stronger, more precise or more advanced words/phrases she can use INSTEAD of this word to sound band 8-9 {"word","level","note": "when to use it, short","example": "natural sentence"}] (for an advanced word, give natural alternatives at the same level),
 "mistake_id": "one common mistake Indonesian learners make with this word, in Bahasa Indonesia (or empty)",
 "tip_id": "one short tip in Bahasa Indonesia on when to use it in IELTS"}`;
 async function aiCard(w){
@@ -133,11 +134,11 @@ function formsHtml(f, word){
   const v = f.verb;
   if(v && (v.past || v.past_participle)){
     const cells = [["Base",v.base||word],["He/she/it",v.third],["Past",v.past],["Past participle",v.past_participle],["-ing form",v.present_participle]];
-    h += `<div class="vforms">${cells.map(([k,x]) => `<div><span>${esc(k)}</span><b>${esc(str(x)||"–")}</b>${x ? `<button class="vplay" type="button" data-vc="say" data-w="${esc(str(x).split("/")[0])}" aria-label="Listen">🔊</button>` : ""}</div>`).join("")}</div>`;
+    h += `<div class="vforms">${cells.map(([k,x]) => `<div><span>${esc(k)}</span>${x ? `<button class="vfword" type="button" data-vc="look" data-w="${esc(str(x).split("/")[0])}">${esc(str(x))}</button>` : "<b>–</b>"}${x ? `<button class="vplay" type="button" data-vc="say" data-w="${esc(str(x).split("/")[0])}" aria-label="Listen">🔊</button>` : ""}</div>`).join("")}</div>`;
     if(v.irregular || (v.past && v.base && !/ed$/.test(str(v.past)))) h += `<p class="small muted">Irregular verb: learn the past forms by heart.</p>`;
   }
-  if(f.noun && (f.noun.plural || f.noun.countable)) h += `<p class="small"><span class="tag">noun</span> plural: <b>${esc(str(f.noun.plural)||"–")}</b>${f.noun.countable ? ` · ${esc(f.noun.countable)}` : ""}</p>`;
-  if(f.adjective && (f.adjective.comparative || f.adjective.superlative)) h += `<p class="small"><span class="tag">adjective</span> ${esc(str(f.adjective.comparative))} · ${esc(str(f.adjective.superlative))}</p>`;
+  if(f.noun && (f.noun.plural || f.noun.countable)) h += `<p class="small"><span class="tag">noun</span> plural: ${f.noun.plural ? chip(str(f.noun.plural), "", "plain2") : "–"}${f.noun.countable ? ` · ${esc(f.noun.countable)}` : ""}</p>`;
+  if(f.adjective && (f.adjective.comparative || f.adjective.superlative)) h += `<p class="small"><span class="tag">adjective</span> ${[f.adjective.comparative, f.adjective.superlative].filter(Boolean).map(x => chip(str(x), "", "plain2")).join(" ")}</p>`;
   return h ? `<div class="vsec"><h3>Word forms</h3>${h}</div>` : "";
 }
 function cardHtml(word, c, opts){
@@ -157,9 +158,11 @@ function cardHtml(word, c, opts){
   if(arr(c.family).length) h += `<div class="vsec"><h3>Word family</h3><div class="vchips">${arr(c.family).map(f => chip(str(f.word), str(f.pos))).join("")}</div></div>`;
   if(arr(c.synonyms).length) h += `<div class="vsec"><h3>Synonyms <small class="muted">(similar meaning)</small></h3><div class="vchips">${arr(c.synonyms).map(s => chip(str(s.word), [s.level, s.note].filter(Boolean).join(" · "), "syn")).join("")}</div></div>`;
   if(arr(c.antonyms).length) h += `<div class="vsec"><h3>Antonyms <small class="muted">(opposite)</small></h3><div class="vchips">${arr(c.antonyms).map(s => chip(str(s.word), str(s.level||""), "ant")).join("")}</div></div>`;
-  if(arr(c.collocations).length) h += `<div class="vsec"><h3>Words that go with it</h3><ul class="vlist">${arr(c.collocations).map(x => `<li>${esc(str(x))}</li>`).join("")}</ul></div>`;
+  if(arr(c.collocations).length) h += `<div class="vsec"><h3>Words that go with it</h3><div class="vchips">${arr(c.collocations).map(x => chip(str(x), "", "col")).join("")}</div></div>`;
   if(arr(c.examples).length) h += `<div class="vsec"><h3>Examples</h3>${arr(c.examples).map(x => `<div class="vexrow"><button class="vplay" type="button" data-vc="say" data-w="${esc(str(x.en))}" aria-label="Listen">🔊</button><div><div>${esc(str(x.en))}</div>${x.id ? `<div class="vid">${esc(str(x.id))}</div>` : ""}</div></div>`).join("")}</div>`;
-  if(arr(c.instead_of).length) h += `<div class="vsec"><h3>Use it instead of</h3><div class="vchips">${arr(c.instead_of).map(x => `<span class="vchip plain">${esc(str(x))}</span>`).join("")}</div></div>`;
+  if(arr(c.upgrades).length) h += `<div class="vsec vup"><h3>Instead of “${esc(word)}”, you can say <small class="muted">(level up)</small></h3>${arr(c.upgrades).map(u => `<div class="vuprow">${chip(str(u.word || u), str(u.level||""), "up")}${u.note ? `<span class="small muted">${esc(str(u.note))}</span>` : ""}${u.example ? `<div class="vex">“${esc(str(u.example))}”</div>` : ""}</div>`).join("")}</div>`;
+  else if(!c._dict) h += `<div class="vsec vup"><h3>Instead of “${esc(word)}”, you can say</h3><button class="btn small ghost" type="button" data-vc="upgrades" data-w="${esc(word)}">Show better words</button><div id="vupOut"></div></div>`;
+  if(arr(c.instead_of).length) h += `<div class="vsec"><h3>Use “${esc(word)}” instead of</h3><div class="vchips">${arr(c.instead_of).map(x => chip(str(x), "", "plain")).join("")}</div></div>`;
   if(c.mistake_id) h += `<div class="notice small"><b>Awas salah:</b> ${esc(str(c.mistake_id))}</div>`;
   if(c.tip_id) h += `<p class="small"><b>Tip IELTS:</b> ${esc(str(c.tip_id))}</p>`;
   if(c._dict) h += `<div class="notice small">This is the quick dictionary card. Pita's full card (Indonesian meaning, levels, collocations) comes when the AI is free again. <button class="linkbtn" type="button" data-vc="retry" data-w="${esc(word)}">Try again</button></div>`;
@@ -179,6 +182,20 @@ window.__vocabAdd = (word, basic) => {
   const c = cache[w] || {word:w, senses:[{pos:"", meaning:str(basic && basic.meaning), example:str(basic && basic.example)}], _dict:true};
   saveWord(w, c, "ielts");
 };
+
+async function moreUpgrades(word, btn){
+  const out = $("vupOut"); if(btn) btn.disabled = true; if(out) out.innerHTML = `<p class="small muted">Pita is finding better words…</p>`;
+  try{
+    const r = await IE().ai(`You are an IELTS vocabulary teacher for Azel (Indonesian, aiming for band 9). Return only JSON.`,
+      [{text:`Give 4-6 stronger, more precise or more advanced words/phrases to use instead of "${word}" in IELTS Speaking and Writing. JSON {"upgrades": [{"word","level","note": "when to use it, short","example": "natural sentence"}]}`}], {temp:0.5});
+    const ups = arr(r.upgrades);
+    const id = wid(word), saved = byId("vocab", id);
+    const c = (current && norm(current.word)===norm(word)) ? current.card : saved && saved.card;
+    if(c){ c.upgrades = ups; if(saved) saveWord(saved.word, c); }
+    if(out) out.innerHTML = ups.map(u => `<div class="vuprow">${chip(str(u.word), str(u.level||""), "up")}${u.note ? `<span class="small muted">${esc(str(u.note))}</span>` : ""}${u.example ? `<div class="vex">“${esc(str(u.example))}”</div>` : ""}</div>`).join("") || `<p class="small muted">No ideas this time.</p>`;
+    if(btn) btn.remove();
+  }catch(e){ if(btn) btn.disabled = false; if(out) out.innerHTML = `<p class="small neg">${esc(IE().errMsg ? IE().errMsg(e) : "The AI couldn't answer.")}</p>`; }
+}
 
 /* ---------- Say it better ---------- */
 const STOP = new Set("i me my we our you your he she it its they them their a an the and or but so because if then than that this these those is am are was were be been being do does did have has had will would can could should may might must to of in on at for with from by about as into like just very really also not no yes there here what which who when where why how all some any one two more most much many lot lots well um uh er ah oh okay ok yeah".split(" "));
@@ -385,6 +402,7 @@ document.addEventListener("click", e => {
     case "unsave": del("vocab", wid(w)); toast("Removed from My words."); showCard(); break;
     case "remove": del("vocab", wid(w)); closeP(); toast("Removed from My words."); break;
     case "retry": delete cache[norm(w)]; lookup(w); break;
+    case "upgrades": moreUpgrades(w, el); break;
     case "open": openSaved(w); break;
     case "better": sayBetter(); break;
     case "fromspeak": { const t = speakingText(); if(!t.trim()){ toast("No Speaking answers saved yet."); break; } $("vbIn").value = t.slice(-2000); sayBetter(); break; }
