@@ -178,9 +178,10 @@ function saveWord(word, card, src){
   put("vocab", Object.assign({}, old || {box:0, due:today(), right:0, wrong:0, addedAt:Date.now()}, {id, word:norm(word), card: card || (old && old.card) || null, src: src || (old && old.src) || "lookup"}));
 }
 window.__vocabAdd = (word, basic) => {
-  const w = norm(word); if(!w || byId("vocab", wid(w))) return;
-  const c = cache[w] || {word:w, senses:[{pos:"", meaning:str(basic && basic.meaning), example:str(basic && basic.example)}], _dict:true};
-  saveWord(w, c, "ielts");
+  const w = norm(word); if(!w || byId("vocab", wid(w))) return false;
+  const c = cache[w] || (basic && basic.card) || {word:w, senses:[{pos:"", meaning:str(basic && basic.meaning), example:str(basic && basic.example)}], _dict:true};
+  saveWord(w, c, basic && basic.card ? "writing" : "ielts");
+  return true;
 };
 
 async function moreUpgrades(word, btn){

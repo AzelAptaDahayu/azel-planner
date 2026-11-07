@@ -30,7 +30,7 @@ Open your private planner link once on each device. Or, on a device that already
 | `ielts.js`, `pita.js` | IELTS menu and Pita, the animated tutor |
 | `vocab.js` | Vocabulary menu (word cards, review, "Say it better") |
 | `learn.js` | Lesson engine for Grammar and Math (path, strict practice, unit tests) |
-| `grammar.js`, `math.js` | Grammar and Math courses |
+| `grammar.js`, `writing.js`, `math.js` | Grammar, Academic Writing and Math courses |
 | `pitachess.js` | Chess against Pita |
 | `chesslib.js` | Chess rules ([chess.js](https://github.com/jhlywa/chess.js), BSD-2-Clause) |
 | `qrcode.js` | QR code for connecting another device ([qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator), MIT) |
