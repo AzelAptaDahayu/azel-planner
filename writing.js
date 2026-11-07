@@ -1,4 +1,4 @@
-/* Academic Writing course: built from Azel's materials (lecturer feedback, vocab list, phrasebank, noun-phrase and Task 1 notes).
+/* Academic Writing course: built from Azel's materials (lecturer feedback, class slides, vocab list, phrasebank, noun-phrase and Task 1 notes).
    Lessons are written fresh for this app; exercises are generated so practice never runs out. */
 (function(){
 "use strict";
@@ -433,6 +433,8 @@ function renderCheck(){
     <p class="small">${r.words} words · ${r.paras.length} paragraphs · ${r.sentences} sentences · about ${r.passiveShare}% of sentences look passive.</p></div>
     <div class="vsec"><h3>1. First sentences ${bodyPassive.length ? `<span class="tag" style="--cb:#FFE3EA;--cf:var(--bad)">${bodyPassive.length} passive</span>` : `<span class="tag" style="--cb:#E3F4EA;--cf:var(--good)">all active ✓</span>`}</h3>
       ${r.paras.map(p => `<div class="vchange"><b>${esc(p.role)}:</b> ${esc(p.first)}${p.pv ? `<div class="small neg">Looks passive (“${esc(p.pv)}”).${p.role.startsWith("Body") ? " Make this topic sentence active: put the doer first." : ""}</div>` : ""}</div>`).join("")}</div>
+    ${(() => { const weak = r.paras.filter(p => p.role.startsWith("Body") && PARA_OPEN_WEAK.test(p.first.trim())); const concl = r.paras.length > 2 ? r.paras[r.paras.length-1] : null; const ok = concl && CONCL_OPEN.test(concl.first.trim());
+      return `<div class="vsec"><h3>1b. How your paragraphs start</h3>${weak.length ? weak.map(p => `<div class="vchange"><b>${esc(p.role)}</b> starts with “${esc(p.first.trim().split(/[ ,]/)[0])}”. <span class="small">Try a noun signpost (“One key reason why…”, “Another major advantage…”), a bridge (“In addition to…, …”, “Despite this, …”) or a summary noun (“These challenges…”).</span></div>`).join("") : `<p class="small pos">Good: no paragraph starts with Firstly / Also / Last but not least.</p>`}${concl && !ok ? `<p class="small neg">Your conclusion doesn't start with a clear signal. Try “In conclusion,”, “To sum up,” or “On balance,”.</p>` : ""}</div>`; })()}
     <div class="vsec"><h3>2. Linking words</h3>
       <p class="small">${funcs.length ? `You used: ${funcs.join(", ")}.` : "No academic linking words found."} ${funcs.length < 4 ? "Try to cover more functions: contrast, result, example, adding." : ""}</p>
       <div class="vchips">${r.links.map(l => `<span class="vchip ${l.f==="basic" ? "plain" : "syn"}">${esc(l.w)} <small>×${l.n}</small></span>`).join("") || ""}</div>
@@ -485,14 +487,235 @@ function saveAll(k){
   P.toast(n ? `Saved ${n} words to My words. Review them in Vocab.` : "They are already in My words.");
 }
 
+
+/* ---------- v16: lessons from Azel's Academic Writing & Presentation class (UNAND) ---------- */
+const SENT_UNIT = {id:"w-sent", title:"Sentence types", sub:"Simple, compound, complex, compound-complex", color:"#EFE8FB", ink:"#6D51A8", lessons:[
+  L("w-stype","4 sentence types","S/C",`<table class="ltbl wide"><tr><th>Type</th><th>Made of</th><th>Example</th></tr>
+   <tr><td><b>Simple</b></td><td>1 independent clause (can have 2 subjects or 2 verbs)</td><td>Jack and Jill study and discuss their lessons.</td></tr>
+   <tr><td><b>Compound</b></td><td>2 independent clauses + FANBOYS (for, and, nor, but, or, yet, so) or a semicolon</td><td>Grammar is easy, so I learned it quickly.</td></tr>
+   <tr><td><b>Complex</b></td><td>1 independent + 1 dependent clause (because, although, when, if…)</td><td>Because grammar is easy, I learned it quickly.</td></tr>
+   <tr><td><b>Compound-complex</b></td><td>2 independent + at least 1 dependent</td><td>Because I forgot to shop, my fridge is empty, but I am not hungry.</td></tr></table>
+   <p>Band 7+ writing mixes all four. Too many simple sentences sound childish; too many long ones are hard to follow.</p>
+   ${ID("Klausa independen = bisa berdiri sendiri sebagai kalimat. Klausa dependen (diawali because, although, when…) tidak bisa berdiri sendiri.")}`,[
+    M("“The government raised fuel prices.” This sentence is…","simple",["compound","complex","compound-complex"],"One independent clause."),
+    M("“Students and lecturers discussed and approved the plan.” This sentence is…","simple",["compound","complex","compound-complex"],"Two subjects and two verbs, but still ONE clause."),
+    M("“Fuel prices rose, so transport costs increased.” This sentence is…","compound",["simple","complex","compound-complex"],"Two independent clauses joined by ‘so’."),
+    M("“Because fuel prices rose, transport costs increased.” This sentence is…","complex",["simple","compound","compound-complex"],"Dependent clause (because…) + independent clause."),
+    M("“When the rupiah weakened, imports became expensive, and inflation rose.” This sentence is…","compound-complex",["compound","complex","simple"],"1 dependent (When…) + 2 independent clauses."),
+    M("“Tourism brings money to Bali, but it also damages the environment.” This sentence is…","compound",["complex","simple","compound-complex"],"Two independent clauses + ‘but’."),
+    M("“Many students work part-time because tuition fees are high.” This sentence is…","complex",["compound","simple","compound-complex"],"‘because tuition fees are high’ is dependent."),
+    M("Which one is a COMPOUND sentence?","Prices fell; demand rose.",["Prices fell after demand rose.","Although prices fell, demand rose.","Falling prices and rising demand."],"A semicolon can join two independent clauses.")]),
+  L("w-fanboys","FANBOYS (coordinators)","and",`<p><b>F</b>or (reason) · <b>A</b>nd (add) · <b>N</b>or (another negative) · <b>B</b>ut (contrast) · <b>O</b>r (choice) · <b>Y</b>et (surprising contrast) · <b>S</b>o (result)</p><p>Joining two full clauses: <b>comma before</b> the coordinator. “Nor” needs question order: <i>…, nor <b>does he</b> enjoy…</i></p>${EX("The test was difficult, but she passed. · He doesn't drink tea, nor does he like coffee.")}`,[
+    M("I wanted to attend the seminar, _____ the tickets were sold out.","but",["so","or","for"],"Contrast → but."),
+    M("He does not eat meat, _____ does he drink milk.","nor",["or","but","so"],"Second negative idea → nor (+ question order)."),
+    M("The weather was beautiful, _____ we had a picnic in the park.","so",["for","nor","yet"],"Result → so."),
+    M("You can pay by card, _____ you can pay in cash.","or",["nor","so","for"],"Choice → or."),
+    M("She was very happy, _____ she had just won a scholarship.","for",["so","nor","or"],"Reason → for (formal ‘because’)."),
+    M("He was exhausted, _____ he kept running until the finish line.","yet",["so","or","for"],"Surprising contrast → yet."),
+    M("Choose the correctly punctuated sentence.","Inflation rose, and wages fell.",["Inflation rose and, wages fell.","Inflation rose, and, wages fell.","Inflation, rose and wages fell."],"Comma before the coordinator that joins two clauses.")]),
+  L("w-subord","Subordinators","because…",`<table class="ltbl wide"><tr><th>Meaning</th><th>Words</th></tr><tr><td>cause</td><td>because, since, as</td></tr><tr><td>contrast</td><td>although, even though, while, whereas</td></tr><tr><td>condition</td><td>if, unless, provided that</td></tr><tr><td>time</td><td>when, while, as, since, until, once, before, after</td></tr><tr><td>-ever</td><td>wherever, whenever, however (= in any way)</td></tr></table>
+   <p>Dependent clause first → comma. Dependent clause second → usually no comma.</p>${EX("Because it was raining, we stayed at home. · We stayed at home because it was raining.")}`,[
+    M("Jake didn't play today _____ he had a toe injury.","because",["although","until","unless"],"Cause → because."),
+    M("We waited at the airport _____ the plane took off.","until",["because","although","unless"],"Time up to a point → until."),
+    M("Ross looked after our garden _____ we were away.","while",["unless","whereas","until"],"During that time → while."),
+    M("_____ you are very fit, you should not go mountaineering.","Unless",["Because","Once","Whereas"],"Unless = if not."),
+    M("_____ the dean arrives, the meeting can begin.","Once",["Although","Whereas","Unless"],"Once = as soon as."),
+    M("I thought she was rude, _____ in fact she is very kind.","whereas",["because","unless","until"],"Contrast between two facts."),
+    M("Put the box _____ you can find room for it.","wherever",["whenever","however","whatever"],"Any place → wherever."),
+    M("Choose the correct punctuation.","Although he earns a good salary, he never saves money.",["Although he earns a good salary he never saves money.","Although, he earns a good salary, he never saves money.","He never saves money, although, he earns a good salary."],"Dependent clause first → comma after it.")]),
+  L("w-reduced","Reduced clauses","~",`<p>If both clauses have the <b>same subject</b>, you can shorten the dependent clause: marker + -ing / past participle / adjective.</p>${EX("When astronauts are orbiting the Earth, they… → <b>When orbiting the Earth</b>, astronauts…")}${EX("Although it had been damaged, the machine worked. → <b>Although damaged</b>, the machine worked.")}${EX("Although he was nervous, … → <b>Although nervous</b>, he gave a great speech.")}<p>Works with although, while, if, when, before, after, until. <b>Never after “because”.</b></p>`,[
+    M("Reduce: “When students are studying, they should put their phones away.”","When studying, students should put their phones away.",["When studying, the phones should be put away by students.","When students studying, they should put phones away.","Because studying, students should put their phones away."],"Same subject (students) + when + -ing."),
+    M("Reduce: “Although it was damaged, the bridge stayed open.”","Although damaged, the bridge stayed open.",["Although damaging, the bridge stayed open.","Although was damaged, the bridge stayed open.","Damaged although, the bridge stayed open."],"Passive meaning → past participle."),
+    M("Which reduced clause is WRONG?","Because tired, she went to bed early.",["Although tired, she finished the essay.","While waiting for the bus, I read the news.","Before leaving, he locked the door."],"Never reduce after ‘because’."),
+    M("Which sentence is correct?","After finishing the report, Azel sent it to the manager.",["After finishing the report, the manager received it.","After finished the report, Azel sent it.","After finishing the report, it was sent."],"The subject of the main clause must be the person who finished."),
+    M("_____ in the 1990s, the policy is now out of date.","Introduced",["Introducing","Having introducing","Introduce"],"Passive meaning → past participle.")])
+]};
+
+const ESSAY_UNIT = {id:"w-essay", title:"Task 2 essays", sub:"Plan, introduction, linking paragraphs, essay types, conclusion", color:"#FDE8EF", ink:"#B04A72", lessons:[
+  L("w-plan","Plan before you write","🧠",`<p><b>Pre-writing (5 minutes):</b> 1) Understand the question (what type? what must you answer?) 2) Brainstorm or mind map 3) Edit: cross out weak ideas, keep the 2 strongest 4) Outline.</p>
+   <table class="ltbl wide"><tr><th>Paragraph</th><th>Sentences</th></tr><tr><td>Introduction</td><td>Paraphrase the question → thesis (your position) → (optional) outline</td></tr><tr><td>Body 1</td><td>Topic sentence (active) → explain → example</td></tr><tr><td>Body 2</td><td>Topic sentence (active, linked to body 1) → explain → example</td></tr><tr><td>Conclusion</td><td>Summary + restate your opinion / final thought</td></tr></table>
+   <p>About 40 minutes, at least 250 words.</p>`,[
+    M("What comes FIRST in a Task 2 introduction?","A paraphrase of the question",["Your first example","A quotation","A summary of body paragraph 2"],"Paraphrase → thesis → (outline)."),
+    M("What is a thesis statement?","A sentence that states your position on the question",["The first example in body 1","The title of the essay","The last sentence of the conclusion only"],"It tells the reader what you will argue."),
+    M("How many main ideas should each body paragraph develop?","One",["Three","As many as possible","None"],"One paragraph = one idea."),
+    M("What should the conclusion NOT do?","Introduce a brand-new argument",["Restate your opinion","Summarise the main points","Give a final thought"],"No new ideas in the conclusion."),
+    M("After brainstorming, what should you do?","Edit: keep the strongest, relevant ideas and cross out the rest",["Write every idea in the essay","Start the conclusion","Count the words"],"Editing turns a brainstorm into a plan."),
+    M("“To what extent do you agree or disagree?” This is a(n)…","agree/disagree (opinion) essay",["problem–solution essay","line graph report","discussion essay"],"You must give and support your position.")]),
+  L("w-intro","Introduction & thesis","T",`<p><b>1. Paraphrase</b> the question (synonyms, word forms, structure). <b>2. Thesis</b>: your position + your two reasons. <b>3. (Optional) Outline</b>: what the essay will do.</p>
+   <p>Thesis frames:</p><ul><li>I strongly agree / completely disagree with this view because … and … .</li><li>Although …, I believe that … .</li><li>This essay will discuss both views and argue that … .</li><li>This essay will examine the main causes of … and propose several solutions.</li></ul>
+   ${EX("Q: Some people think living in big cities is bad for health. → It is widely argued that urban life is harmful to people's well-being. I completely agree with this view because cities have higher pollution levels and a more stressful lifestyle.")}`,[
+    M("Which is the best thesis for an agree/disagree essay?","I strongly agree with this view because saving builds financial security and creates opportunities for growth.",["Saving money is a topic that many people talk about.","In this essay I will write about saving.","There are many things about saving money."],"Clear position + two reasons."),
+    M("Which is the best paraphrase of “University education should be free to everyone, regardless of income.”?","It is often argued that higher education ought to be available at no cost to all students, whatever their financial background.",["University education should be free to everyone, regardless of income, many people think.","University is free and income.","University education should be free to everyone regardless of their income."],"New words and structure, same meaning."),
+    M("Discussion essay (“Discuss both views and give your opinion”). Best thesis?","This essay will discuss both views and argue that schools play the greater role.",["I agree.","Parents and schools are both places.","This essay is about parents."],"Mention both views + your opinion."),
+    M("Problem–solution essay. Best outline sentence?","This essay will examine the main causes of overfishing and propose solutions such as stricter quotas.",["Overfishing is very bad.","I will talk about fish.","Fish are important animals."],"Tell the reader what the essay will cover."),
+    M("Which thesis is too vague?","I have many opinions about this issue.",["I completely disagree, as job satisfaction matters more than salary.","Although technology isolates some people, I believe it brings communities closer.","I believe a sugar tax would protect public health."],"A thesis must state a clear position.")]),
+  L("w-linkpara","Linking paragraphs","🔗",`<p>Body paragraphs don't have to start with Firstly / Secondly. Better ways to open a paragraph and connect it to the last one:</p>
+   <table class="ltbl wide"><tr><th>Technique</th><th>Examples</th></tr>
+   <tr><td><b>Noun signposts</b></td><td>One key reason why… is that… · Another major advantage of… is… · A further benefit is… · The most significant problem is…</td></tr>
+   <tr><td><b>Bridge back</b> (look back, then forward)</td><td>In addition to its financial benefits, saving also… · Apart from the economic impact, tourism… · Beyond its effect on health, …</td></tr>
+   <tr><td><b>Summary noun</b> (this/these/such)</td><td>These challenges can be addressed through… · This problem is closely linked to… · Such policies…</td></tr>
+   <tr><td><b>Contrast turn</b></td><td>Despite these advantages, … · On the other hand, … · However, critics argue that…</td></tr>
+   <tr><td><b>Topic shift</b></td><td>Turning to the issue of cost, … · With regard to the environment, … · When it comes to…, …</td></tr>
+   <tr><td><b>Views</b> (discussion essay)</td><td>On the one hand, … / On the other hand, … · Those who support X argue that… · Opponents, however, contend that…</td></tr>
+   <tr><td><b>Task 1 groups</b></td><td>Looking at…, … · Regarding the remaining countries, … · In terms of…, …</td></tr>
+   <tr><td><b>Conclusion</b></td><td>In conclusion, · To sum up, · Overall, · On balance,</td></tr></table>
+   <p>Avoid: “Last but not least”, “Also,” at the start of a paragraph, and “Lastly” to start a conclusion.</p>
+   ${ID("Paragraf yang baik ‘menengok ke belakang’ sedikit (menyebut ide paragraf sebelumnya) lalu ‘melangkah ke depan’ (ide baru). Contoh: ‘In addition to financial stability, saving also enables young people to invest in their future.’")}`,[
+    M("Body 1 argued that saving gives financial security. Best opening for Body 2?","In addition to providing financial security, saving enables young people to invest in their future.",["Secondly saving good.","Also, saving.","Last but not least, saving is good."],"Bridge back (financial security) + new idea (investing in the future)."),
+    M("Body 1 described the benefits of online learning. Body 2 discusses its drawbacks. Best opening?","Despite these advantages, online learning has several serious drawbacks.",["Firstly, online learning has drawbacks.","Online learning, also.","Last but not least, there are drawbacks."],"‘Despite these advantages’ links back and turns to the contrast."),
+    M("Discussion essay, Body 2 (the opposite view). Best opening?","On the other hand, others argue that schools are better equipped to teach children social values.",["Secondly, schools.","Lastly, I think schools.","In conclusion, schools are better."],"On the one hand / On the other hand presents two views."),
+    M("Problem–solution essay: the paragraph after the problems. Best opening?","These challenges can be mitigated through targeted government action.",["Firstly, solutions.","Also, the government.","Last but not least, there are solutions."],"A summary noun (these challenges) links back to the problems."),
+    M("Which is the WEAKEST way to start a conclusion?","Last but not least, the government should act.",["In conclusion, governments must act to reduce overfishing.","To sum up, both views have merit, but I believe…","On balance, the advantages of remote work outweigh its drawbacks."],"‘Last but not least’ introduces a final point, not a conclusion."),
+    M("Task 1 line graph, second body paragraph. Best opening?","Regarding the remaining countries, the UK started at over 10 tonnes.",["Secondly, the UK.","Last but not least, the UK.","Also, the UK."],"‘Regarding / Looking at / Turning to’ group the data."),
+    M("Choose the best topic-shift opening.","Turning to the issue of cost, public transport is far cheaper than driving.",["Cost, also.","Another, cost is cheaper.","Firstly and secondly, cost."],"‘Turning to the issue of…’ starts a new topic smoothly."),
+    M("Which opening uses a NOUN signpost (instead of Firstly)?","One key reason why saving matters is that emergencies can happen at any time.",["Firstly, saving matters.","Saving, firstly, matters.","Firstly secondly saving."],"‘One key reason why… is that…’ sounds more academic than ‘Firstly,’."),
+    M("Body 2 adds a second problem of tourism. Best opening?","Apart from rising house prices, tourism also damages fragile ecosystems.",["Also tourism.","Secondly, tourism, also, damages.","Lastly, tourism."],"‘Apart from + previous point’ bridges the two paragraphs.")]),
+  L("w-agree","Agree / disagree essay","👍",`<p>Question: <i>To what extent do you agree or disagree?</i> Choose a clear position and keep it in every paragraph.</p>
+   <ul><li>Intro: paraphrase + thesis (position + 2 reasons)</li><li>Body 1: reason 1 + explanation + example</li><li>Body 2: reason 2 + explanation + example</li><li>Conclusion: summary + restate position</li></ul>
+   <p>Phrases: I strongly agree with the notion that… · I completely disagree with the idea that… · I concur with the view that… · While I agree with some aspects of this argument, I believe…</p>`,[
+    M("Which phrase shows PARTIAL agreement?","While I agree with some aspects of this argument, I believe that…",["I completely disagree with the idea that…","I strongly agree with the notion that…","I concur with the viewpoint that…"],"‘While I agree with some aspects…’ = partly agree."),
+    M("Choose the most formal way to agree.","I concur with the view that education should be free.",["I'm totally with you on free education.","Yeah, education should be free.","Free education is, like, good."],"concur = formal agree."),
+    M("Where should your opinion appear in an agree/disagree essay?","In the introduction, the body paragraphs and the conclusion",["Only in the conclusion","Only in body paragraph 2","Nowhere; stay neutral"],"Keep your position clear throughout."),
+    M("Which is a good topic sentence for Body 1 (agree that saving is important)?","One key reason why saving is important is that it offers stability during unexpected events.",["Saving was done by many people.","There are many ideas about money.","In conclusion, saving is good."],"Active, clear reason linked to the thesis."),
+    M("What does “To what extent” allow you to do?","Agree completely, disagree completely, or partly agree",["Only agree","Only describe both views without an opinion","Only list problems"],"You decide how much you agree.")]),
+  L("w-discuss","Discussion essay","⚖",`<p>Question: <i>Discuss both views and give your own opinion.</i> You must explain <b>both</b> views AND say which you support.</p>
+   <ul><li>Intro: paraphrase both views + thesis (“This essay will discuss both views and argue that…”)</li><li>Body 1: view 1 (On the one hand, …)</li><li>Body 2: view 2 (On the other hand, …) — usually the one you agree with</li><li>Conclusion: summary + your opinion</li></ul>
+   <p>Opinion phrases: I am of the opinion that… · From my point of view, … · It is my belief that… · As far as I am concerned, … · I would argue that…</p>`,[
+    M("A discussion essay must…","explain both views and give your own opinion",["only give your opinion","only explain one view","avoid any opinion"],"Both views + opinion."),
+    M("Best opening for Body 1?","On the one hand, some argue that parents influence their children more than anyone else.",["Firstly, I disagree.","In conclusion, parents.","Parents, schools, both."],"On the one hand → first view."),
+    M("Which thesis fits “Discuss both views and give your opinion”?","This essay will discuss both perspectives and argue in favour of the latter.",["I will not give my opinion.","Both views are things.","This essay will only discuss the first view."],"‘in favour of the latter’ = you support the second view."),
+    M("Choose the most formal opinion phrase.","I am of the opinion that cycling is the better option.",["I reckon cycling's better.","Cycling is better, period.","Me, I like bikes."],"Formal opinion language."),
+    M("“In a similar vein” means…","in a similar way",["in contrast","for example","as a result"],"Used to add a similar point.")]),
+  L("w-probsol","Problem–solution & cause–effect","🛠",`<p>Structure: Intro (paraphrase + outline) → Body 1: problems (with examples) → Body 2: solutions (how they solve the problems) → Conclusion (summary + final thought).</p>
+   <table class="ltbl wide"><tr><th>Cause → effect</th><th>Effect ← cause</th></tr><tr><td>X causes / leads to / results in / gives rise to / brings about Y</td><td>Y is caused by / results from / is due to / is the result of X</td></tr></table>
+   <p>Solutions: This issue can be tackled by… · One effective solution would be to… · To address this problem, the government should… · These challenges can be mitigated through…</p>
+   ${ID("Hati-hati arah sebab-akibat: ‘X leads to Y’ (X sebab). ‘Y results from X’ (X tetap sebab). ‘Y results in X’ artinya terbalik!")}`,[
+    M("Rising inflation is partly _____ higher fuel prices.","a result of",["causes","leads to","gives rise to"],"Effect (inflation) + is a result of + cause."),
+    M("The closure of many factories _____ high unemployment.","brought about",["was due to","resulted from","on account of"],"Cause + brought about + effect."),
+    M("Many medicines remain unaffordable _____ their high price.","owing to",["gives rise to","leads to","brings about"],"owing to + noun (cause)."),
+    M("Social media _____ new forms of marketing.","has given rise to",["is a result of","owing to","is due to"],"Cause + has given rise to + effect."),
+    M("The rise in obesity _____ the easy availability of fast food.","is due to",["leads to","results in","brings about"],"Effect + is due to + cause."),
+    M("The desire for higher profits _____ companies moving to countries with cheap labour.","leads to",["is due to","results from","on account of"],"Cause + leads to + effect."),
+    M("Best opening for the SOLUTION paragraph?","To address these problems, governments should introduce stricter fishing quotas.",["Secondly, fish.","Also, problems.","In conclusion, fishing."],"‘To address these problems’ links back to the problem paragraph.")]),
+  L("w-concl","Conclusions","∎",`<p>1) Signal: In conclusion, / To sum up, / Overall, / On balance, 2) Summarise your main points in new words 3) Restate your opinion or give a final thought. No new ideas or examples.</p>
+   ${EX("In conclusion, saving money is an essential habit for everyone, regardless of age, as it provides security in a crisis and helps people reach long-term goals.")}`,[
+    M("Which is the best conclusion opening?","On balance, the benefits of remote work outweigh its drawbacks.",["Lastly, remote work.","Also, remote work is good.","For example, remote work."],"On balance + clear final judgement."),
+    M("What should NOT appear in a conclusion?","A new example that was not in the essay",["A summary of the main points","Your opinion","A final thought"],"No new information."),
+    M("Choose the best final-thought sentence (problem–solution).","Addressing these problems is essential to ensure that tourism benefits both visitors and residents.",["Tourism, it is big.","I like tourism a lot.","There are many tourists in Bali, for example."],"A final thought shows why the issue matters."),
+    M("Which is BAD practice in a conclusion?","Copying your thesis sentence word for word",["Paraphrasing your thesis","Summarising both reasons","Restating your opinion in new words"],"Paraphrase; don't copy.")])
+]};
+
+const FORMAL_UNIT = {id:"w-formal", title:"Formal style & presentations", sub:"Register, hedging, signposting", color:"#E6F1FB", ink:"#3D6FA0", lessons:[
+  L("w-reg","Formal vs informal","🎩",`<p>Academic writing and presentations are <b>formal</b>: no contractions (don't → do not), no slang or idioms, fewer phrasal verbs, precise words, complete sentences.</p>
+   <table class="ltbl wide"><tr><th>Informal</th><th>Formal</th></tr><tr><td>go / leave</td><td>depart</td></tr><tr><td>keep</td><td>retain</td></tr><tr><td>stop</td><td>cease</td></tr><tr><td>show</td><td>demonstrate</td></tr><tr><td>help</td><td>assist</td></tr><tr><td>find out</td><td>determine / establish</td></tr><tr><td>look into</td><td>investigate</td></tr><tr><td>go up / go down</td><td>increase / decline</td></tr><tr><td>lots of</td><td>a substantial amount of</td></tr><tr><td>fix the problem</td><td>address / mitigate the problem</td></tr></table>
+   <p>Also avoid overgeneralisation (“All teenagers…”) and religious or very personal claims; write “In some cultures, …” instead.</p>`,[
+    M("Formal word for ‘look into’:","investigate",["check out","dig up","go over"],"look into → investigate."),
+    M("Formal word for ‘keep’:","retain",["hold on","stick","save up"],"keep → retain."),
+    M("Which sentence is formal?","Prices experienced a sharp decline in the second quarter.",["Prices went down fast in Q2.","Prices dropped like crazy.","Prices kinda fell."],"Formal verb + precise noun phrase."),
+    M("Which sentence is formal?","The data suggest that this decline is attributable to weaker demand.",["I think it's because people don't buy stuff.","People just stopped buying, you know.","It's 'cause of demand, yeah."],"Hedged, formal, no contractions."),
+    M("Formal version of “We don't have lots of data on local MSMEs.”","Limited data are available on local MSMEs.",["We ain't got much data on MSMEs.","There's not lots of data, MSMEs.","Data? Not much."],"No contraction, no ‘lots of’."),
+    M("Which sentence avoids overgeneralisation?","Many teenagers spend several hours a day on social media.",["All teenagers are addicted to social media.","Every young person wastes their life online.","Teenagers never stop scrolling."],"Use many / some / tend to.")]),
+  L("w-hedge","Hedging","~",`<p>Don't claim too much. Use: <b>suggest, indicate, appear to, tend to, is likely to, may, could, it is possible that</b>.</p>${EX("✗ The economy will 100% crash. ✓ The economy is likely to contract if export demand falls.")}${ID("Hedging = bahasa diplomatis. Bukan berarti ragu, tapi jujur sesuai bukti. Dosen dan examiner IELTS menilai ini sebagai gaya akademik.")}`,[
+    M("Choose the best hedged sentence.","The figures suggest that tourism is likely to recover next year.",["Tourism will definitely recover next year.","Tourism is 100% going to recover.","Everyone knows tourism will recover."],"suggest + is likely to."),
+    M("Replace ‘will crash’ with a hedge: “If demand drops, the economy _____.”","could contract sharply",["will crash hard","is gonna crash","crashes for sure"],"could + formal verb."),
+    M("Which verb is a hedge?","indicate",["prove","guarantee","confirm without doubt"],"indicate = shows that something is probably true."),
+    M("Choose the best hedged claim.","Higher interest rates may reduce household borrowing.",["Higher interest rates always kill borrowing.","Interest rates destroy borrowing.","Borrowing will totally stop."],"may + neutral verb.")]),
+  L("w-present","Presentation signposting","🎤",`<p>Signposts tell the audience where you are:</p><ul><li>Opening: Good morning. Today, I would like to examine… · My presentation is divided into three parts.</li><li>Moving on: Moving on to the next point, … · Let us turn our attention to… · This brings me to…</li><li>Data: As this chart shows, … · The figures indicate a sharp rise in…</li><li>Closing: To sum up, … · In conclusion, … · Thank you for your attention. I would be happy to answer any questions.</li></ul>`,[
+    M("Best way to move to the next speaker's part:","This brings me to the next point, which my colleague will present.",["OK so next, yeah.","Now it's his turn, whatever.","Next guy, go."],"Formal signpost."),
+    M("Best opening sentence:","Good morning. Today, I would like to examine the causes of rising food prices.",["Hey guys, so like, food is expensive.","What's up everyone, prices!","Let's go, food prices."],"Formal greeting + purpose."),
+    M("Best way to refer to a chart:","As this chart shows, the rupiah weakened sharply in March.",["Look, the money went down.","The chart, yeah, the rupiah.","So the rupiah went bye-bye."],"As this chart shows…"),
+    M("Best closing:","Thank you for your attention. I would be happy to answer any questions.",["That's it, bye.","Done. Questions? No? OK.","Finished, thanks I guess."],"Formal closing.")])
+]};
+
+const T1_EXTRA = [
+  L("w-t1struct","Task 1 report structure","📊",`<p><b>1. Introduction</b>: paraphrase the question (The line graph <b>illustrates / depicts / shows</b>… ; per person → per capita; between 1967 and 2007 → from 1967 to 2007). <b>2. Overview</b>: start with “Overall,”; the main trends and biggest differences; <b>no specific numbers</b>; group similar trends. <b>3–4. Body paragraphs</b>: details with numbers, grouped (“Looking at…”, “Regarding the remaining…”). At least 150 words; no opinion.</p>
+   ${EX("Overall, CO2 emissions in the UK and Sweden fell, while those in Italy and Portugal continued to rise.")}`,[
+    M("Best paraphrase of “The graph below shows average CO2 emissions per person in four countries between 1967 and 2007.”","The line graph illustrates the average carbon dioxide output per capita in four countries from 1967 to 2007.",["The graph below shows average CO2 emissions per person in four countries between 1967 and 2007.","I think the graph is about CO2.","CO2 is bad for four countries."],"New words (illustrates, output, per capita) and structure."),
+    M("Which is a good OVERVIEW sentence?","Overall, emissions in the UK and Sweden decreased, while those in Italy and Portugal rose.",["In 1977, Italy produced 5.2 tonnes.","I believe the UK should reduce CO2.","Portugal started at 1.8 tonnes in 1967."],"Main trends, no specific numbers."),
+    M("What should the overview NOT include?","Specific numbers for each year",["The main trends","Biggest differences","Grouping of similar lines"],"Save numbers for the body paragraphs."),
+    M("Should you give your opinion in Task 1?","No, only describe and compare the data",["Yes, in the conclusion","Yes, in the overview","Only if you agree with the data"],"Task 1 is a report, not an essay."),
+    M("Best opening for the first body paragraph?","Looking at the first two countries, emissions in Italy rose significantly.",["Firstly, I will say Italy.","Italy, emissions, rose.","In my opinion, Italy is the worst."],"‘Looking at…’ groups the data.")]),
+  L("w-process","Process diagrams","⚙",`<p>Processes use the <b>present simple passive</b> (is dried, are transported) and <b>sequencers</b>: First, / To begin with, → Next, / Then, / After that, / Subsequently, / Once…, → Finally, / In the final stage, …</p>
+   <p>Overview: Overall, there are [number] stages in the process, beginning with … and ending with … .</p>
+   ${EX("First, the coffee cherries are picked. Once they have been dried, they are roasted at high temperatures. Finally, the beans are packed and delivered to shops.")}`,[
+    M("First, the raw materials _____ to the factory.","are transported",["transport","are transporting","transported"],"Present passive for processes."),
+    M("_____ the beans have been dried, they are roasted.","Once",["Despite","Because of","Although of"],"Once = after (time sequencer)."),
+    M("Best overview for a process with 6 stages:","Overall, there are six stages in the process, beginning with harvesting and ending with packaging.",["Overall, coffee is delicious.","In my opinion, the process is long.","Firstly, harvesting happens."],"Number of stages + first + last."),
+    M("Which sequencer shows the LAST stage?","Finally,",["Subsequently,","Next,","To begin with,"],"Finally = the last step."),
+    M("In the next stage, the paper _____ into rolls.","is cut",["cuts","cutting","is cutting"],"Passive: is + past participle.")])
+];
+
+/* irregular verbs drill data from Azel's class handout (meanings corrected) */
+const PARA_OPEN_WEAK = /^(firstly|secondly|thirdly|fourthly|first of all|also|last but not least|lastly|and|but|so)\b/i;
+const CONCL_OPEN = /^(in conclusion|to conclude|to sum up|in summary|overall|on balance|all in all|in short)\b/i;
+
+/* ---------- essay builder (templates) ---------- */
+const BUILD = {
+ agree:{name:"Agree / disagree", q:"To what extent do you agree or disagree?", paras:[
+   {n:"Introduction", tip:"Paraphrase the question, then your position + 2 reasons.", s:["It is widely argued that ","It is often believed that ","I strongly agree with this view because ","I completely disagree with this notion, as ","While I agree with some aspects of this argument, I believe that "]},
+   {n:"Body 1 (reason 1)", tip:"Active topic sentence → explain → example.", s:["One key reason why ","The main reason is that ","This is because ","For instance, ","A case in point is "]},
+   {n:"Body 2 (reason 2)", tip:"Link back to body 1, then the new reason.", s:["In addition to ","Another major advantage of ","Apart from ","As a result, ","To illustrate, "]},
+   {n:"Conclusion", tip:"Summary + restate your position.", s:["In conclusion, ","To sum up, ","For these reasons, I firmly believe that "]}]},
+ discuss:{name:"Discussion (both views)", q:"Discuss both views and give your own opinion.", paras:[
+   {n:"Introduction", tip:"Paraphrase both views + thesis with your opinion.", s:["Some people believe that ",", while others argue that ","This essay will discuss both views and argue that ","Although ",", I believe that "]},
+   {n:"Body 1 (view 1)", tip:"Present the first view fairly.", s:["On the one hand, ","Those who support this view argue that ","This is due to the fact that ","For example, "]},
+   {n:"Body 2 (view 2)", tip:"Present the second view (usually yours).", s:["On the other hand, ","Opponents, however, contend that ","For this reason, ","In my view, "]},
+   {n:"Conclusion", tip:"Summary + your opinion.", s:["In conclusion, although ","On balance, I am of the opinion that ","Overall, "]}]},
+ probsol:{name:"Problem–solution", q:"What problems does this cause, and how can they be solved?", paras:[
+   {n:"Introduction", tip:"Paraphrase + outline (problems + solutions).", s:["In recent years, ","This essay will examine the main problems caused by "," and propose solutions such as "]},
+   {n:"Body 1 (problems)", tip:"Problem 1 + explanation + example; problem 2 + example.", s:["One significant problem is ","This leads to ","For instance, ","Moreover, ","is also caused by "]},
+   {n:"Body 2 (solutions)", tip:"A solution for each problem + how it works.", s:["These challenges can be mitigated through ","To address this issue, the government should ","One effective solution would be to ","Additionally, "]},
+   {n:"Conclusion", tip:"Summary of problems + solutions + final thought.", s:["In conclusion, ","However, these issues can be addressed through ","Addressing these problems is essential to ensure that "]}]},
+ graph:{name:"Task 1: line graph", q:"Summarise the information by selecting and reporting the main features.", paras:[
+   {n:"Introduction", tip:"Paraphrase the question.", s:["The line graph illustrates ","The graph compares ","from "," to "]},
+   {n:"Overview", tip:"Main trends, no numbers.", s:["Overall, ",", while ","It is also clear that "]},
+   {n:"Body 1", tip:"Details for the first group.", s:["Looking at ","rose significantly from "," to ","Similarly, ","peaked at "]},
+   {n:"Body 2", tip:"Details for the second group.", s:["Regarding the remaining ","there was a gradual drop in ","By the end of the period, ","remained stable at "]}]}
+};
+let btype = "agree";
+const bdraft = () => { try{ return JSON.parse(localStorage.getItem("azel-wdraft") || "{}"); }catch(e){ return {}; } };
+const bsave = d => { try{ localStorage.setItem("azel-wdraft", JSON.stringify(d)); }catch(e){} };
+function buildHtml(){
+  const B2 = BUILD[btype], d = bdraft()[btype] || {};
+  return `<div class="segs" role="group" aria-label="Essay type">${Object.keys(BUILD).map(k => `<button type="button" data-lx="btype" data-c="writing" data-v="${k}" aria-pressed="${k===btype}">${BUILD[k].name}</button>`).join("")}</div>
+    <p class="small muted">Question type: <i>${esc(B2.q)}</i> Tap a starter to add it, then finish the sentence in your own words.</p>
+    <div class="vsec"><label class="small" for="bq"><b>The question</b></label><textarea class="in" id="bq" rows="2" placeholder="Paste the task here">${esc(d.q || "")}</textarea></div>
+    ${B2.paras.map((p, i) => `<div class="vsec bpara"><h3>${esc(p.n)}</h3><p class="small muted">${esc(p.tip)}</p>
+      <div class="vchips">${p.s.map(s => `<button class="vchip col" type="button" data-lx="bstart" data-c="writing" data-i="${i}" data-s="${esc(s)}">${esc(s.trim())}…</button>`).join("")}</div>
+      <textarea class="in" id="bp${i}" rows="4" data-bp="${i}">${esc((d.p||[])[i] || "")}</textarea></div>`).join("")}
+    <div class="btn-row"><button class="btn" type="button" data-lx="bcheck" data-c="writing">Check this essay</button><button class="btn ghost small" type="button" data-lx="bclear" data-c="writing">Clear</button></div>
+    <p class="small muted" id="bcount"></p>`;
+}
+function bstore(){
+  const all = bdraft(), B2 = BUILD[btype];
+  all[btype] = {q: (document.getElementById("bq")||{}).value || "", p: B2.paras.map((p, i) => (document.getElementById("bp"+i)||{}).value || "")};
+  bsave(all);
+  const words = all[btype].p.join(" ").split(/\s+/).filter(Boolean).length, c = document.getElementById("bcount");
+  if(c) c.textContent = `${words} words${btype==="graph" ? " (aim for 150+)" : " (aim for 250+)"}`;
+}
+document.addEventListener("input", e => { if(e.target && (e.target.dataset && e.target.dataset.bp!=null || e.target.id==="bq")) bstore(); });
+
+/* put the new units in learning order */
+(function(){
+  const at = id => units.findIndex(u => u.id===id);
+  units.splice(at("w-voice"), 0, SENT_UNIT);
+  units.splice(at("w-vocab"), 0, ESSAY_UNIT);
+  units.splice(at("w-np"), 0, FORMAL_UNIT);
+  const t1 = units[at("w-t1")]; t1.lessons.unshift(T1_EXTRA[0]); t1.lessons.push(T1_EXTRA[1]); t1.sub = "Report structure, trends, prepositions, numbers, processes";
+})();
 window.Learn.register({id:"writing", title:"Academic Writing", kicker:"Topic sentences, connectors, vocab, idioms", tutor:"IELTS academic writing teacher", units,
   extraHtml(){ return `<div class="section"><h2>Check my essay</h2><div class="card"><p class="small muted">Paste your essay (empty line between paragraphs). Pita checks your lecturer's rules: active topic sentences, varied connectors and informal words. The quick check is free and unlimited; “Fix it with Pita” uses the AI.</p><textarea class="in" id="wrIn" rows="8" placeholder="Paste your essay here…"></textarea><div class="btn-row"><button class="btn" type="button" data-lx="wrcheck" data-c="writing">Check my essay</button></div><div id="wrOut"></div></div></div>
+    <div class="section"><h2>Essay builder</h2><div class="card" id="wrBuild">${buildHtml()}</div></div>
     <div class="section"><h2>Word banks</h2><div class="card" id="wrBank">${bankHtml()}</div></div>`; },
   onAction(a, el){
     if(a==="wrcheck"){ renderCheck(); return true; }
     if(a==="wrai"){ aiFix(); return true; }
     if(a==="bank"){ bank = el.dataset.v; const b = document.getElementById("wrBank"); if(b) b.innerHTML = bankHtml(); return true; }
     if(a==="saveall"){ saveAll(el.dataset.v); return true; }
+    if(a==="btype"){ bstore(); btype = el.dataset.v; const b = document.getElementById("wrBuild"); if(b){ b.innerHTML = buildHtml(); bstore(); } return true; }
+    if(a==="bstart"){ const ta = document.getElementById("bp"+el.dataset.i); if(ta){ const v = ta.value, add = el.dataset.s; ta.value = v + (v && !/\s$/.test(v) ? " " : "") + add; ta.focus(); try{ ta.setSelectionRange(ta.value.length, ta.value.length); }catch(e){} bstore(); } return true; }
+    if(a==="bclear"){ if(!P.twoTap) return true; P.twoTap(el, "Tap again to clear", () => { const all = bdraft(); delete all[btype]; bsave(all); const b = document.getElementById("wrBuild"); if(b) b.innerHTML = buildHtml(); }); return true; }
+    if(a==="bcheck"){ bstore(); const d = bdraft()[btype] || {p:[]}; const text = d.p.filter(x => x.trim()).join("\n\n"); const w = document.getElementById("wrIn"); if(w){ w.value = text; renderCheck(); document.getElementById("wrOut").scrollIntoView({behavior:"smooth", block:"start"}); } return true; }
     return false;
   }});
 window.__writingTools = {analyse, isPassive, apGen, linkGen, wordGen, idiomGen, formGen, units};
