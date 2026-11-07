@@ -1275,7 +1275,9 @@ function overlay(list, nb){
   const S = toMin(nb.s), E = toMin(nb.e); const out = [];
   list.forEach(b => {
     const bs = toMin(b.s), be = toMin(b.e);
-    if(be<=S || bs>=E || HARD.has(b.type)){ out.push(b); return; }
+    // a class or event placed on top of resort work splits the work block (class wins)
+    const cuts = !HARD.has(b.type) || (b.type==="work" && (nb.type==="class" || nb.type==="event"));
+    if(be<=S || bs>=E || !cuts){ out.push(b); return; }
     if(bs<S) out.push(Object.assign({}, b, {e:nb.s}));
     if(be>E) out.push(Object.assign({}, b, {s:nb.e}));
   });
@@ -1382,10 +1384,12 @@ function blocksFor(date){
   list.changed = changed;
   return list;
 }
+// if blocks overlap, show the most important one: class > event > asdos > work > the rest
+const RANK = {class:5, event:4, asdos:3, work:2};
 function findBlock(list, mins){
-  let soft = -1;
-  for(let i=0;i<list.length;i++){ const b = list[i]; if(mins>=toMin(b.s) && mins<toMin(b.e)){ if(HARD.has(b.type)) return i; if(soft<0) soft = i; } }
-  return soft;
+  let best = -1, bestR = -1;
+  for(let i=0;i<list.length;i++){ const b = list[i]; if(mins>=toMin(b.s) && mins<toMin(b.e)){ const r = RANK[b.type] || 1; if(r > bestR || (r===bestR && toMin(b.s) >= toMin(list[best].s))){ best = i; bestR = r; } } }
+  return best;
 }
 function ideaEligible(b){
   if(b.planned) return false;
@@ -1528,7 +1532,8 @@ function renderNow(){
   if(b.type==="study" && timer.mode==="idle") acts += `<button class="btn" type="button" data-act="startfocus" data-course="${b.course||""}">Start this study block</button>`;
   if(ideaEligible(b)) acts += `<button class="btn yellowbtn" type="button" data-act="ideas" ${ideaAttrs(t,b)}>Ideas for this free time</button>`;
   if(acts!==lastActs){ $("nowActs").innerHTML = acts; lastActs = acts; }
-  const nx = list[i+1] || blocksFor(ymd(new Date(now.getTime()+864e5)))[1];
+  // the next block that starts after now (not just the next one in the list)
+  const nx = list.find(x => toMin(x.s) > minsF && x!==b) || blocksFor(ymd(new Date(now.getTime()+864e5))).find(x => toMin(x.s) >= 300);
   if(nx) $("nowNext").innerHTML = `<span class="label">Up next</span> &nbsp;<b>${nx.s}</b> &nbsp;${esc(nx.title)}`;
 }
 let lastActs = null;
